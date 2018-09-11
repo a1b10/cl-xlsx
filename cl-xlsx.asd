@@ -8,5 +8,5 @@
   :serial t
   :components ((:file "package")
                (:file "cl-xlsx"))
-  :depends-on (:zip :flexi-streams :xmls))
+  :depends-on (:zip :flexi-streams :xmls :babel))
 
