@@ -1,6 +1,0 @@
-;;;; cl-xlsx.lisp
-
-(in-package #:cl-xlsx)
-
-;;; "cl-xlsx" goes here. Hacks and glory await!
-
