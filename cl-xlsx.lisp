@@ -16,7 +16,7 @@
 ;; From Carlos Ungil
 (defun get-entry (name zip)
   "Internal use, get content of entry inside the ZIP/XLSX file."
-  (let ((entry (zip:get-zip-file-entry name zip)))
+  (let ((entry (zip:get-zipfile-entry name zip)))
     (when entry
       (xmls:parse (babel:octets-to-string
 		   (zip:zipfile-entry-contents entry))))))
@@ -180,3 +180,30 @@
 	     (loop for (id name) in sheets
 		   collect (list id name))))
     entry-name))
+
+(defun begins-with? (str substring)
+  "String begins with substring?"
+    (string= substring (subseq str 0 (length substring))))
+
+
+(defun app-type (file)
+  "Return the type of an .xlsx or .ods file."
+  (let ((entries (list-entries file)))
+    (cond ((and (member "meta.xml" entries :test #'string=)
+		(begins-with? (caddar (select-tags-xlsx file "meta.xml" '(:meta :generator)))
+			      "LibreOffice"))
+	   "ods-libreoffice")
+	  ((and (member "docProps/app.xml" entries :test #'string=)
+		(begins-with? (caddar (select-tags-xlsx file "docProps/app.xml" '(:Application)))
+			      "LibreOffice"))
+	   "xlsx-libreoffice")
+	  ((and (member "docProps/app.xml" entries :test #'string=)
+		(string= (caddar (select-tags-xlsx file "docProps/app.xml" '(:Application)))
+			 "Microsoft Excel"))
+	   "xlsx-microsoft")))) ;; works!
+
+;; (app-type #P"/home/josephus/docs/test.ods") ;; => "ods"
+;; (app-type #P"/home/josephus/docs/test.xlsx") ;; => "xlsx-libreoffcie"
+;; (app-type #p"/home/josephus/docs/test-windows.xlsx") ;; => "xlsx-windows" 
+
+;; (member "docProps/app.xml" (list-entries #p"/home/josephus/docs/test-windows.xlsx") :test #'string=)
