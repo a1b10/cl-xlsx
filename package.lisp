@@ -2,7 +2,7 @@
 (in-package :cl-user)
 
 (defpackage #:cl-xlsx
-  (:use #:cl #:zip #:xmls #:babel)
+  (:use #:cl)
   (:export #:list-entries
 	   #:get-entry
 	   #:with-open-xlsx
