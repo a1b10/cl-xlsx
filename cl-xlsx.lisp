@@ -196,12 +196,6 @@
 			 "Microsoft Excel"))
 	   "xlsx-microsoft")))) ;; works!
 
-;; (app-type #P"/home/josephus/docs/test.ods") ;; => "ods-libreoffice"
-;; (app-type #P"/home/josephus/docs/test.xlsx") ;; => "xlsx-libreoffice"
-;; (app-type #p"/home/josephus/docs/test-windows.xlsx") ;; => "xlsx-windows" 
-
-;; (member "docProps/app.xml" (list-entries #p"/home/josephus/docs/test-windows.xlsx") :test #'string=)
-
 ;; from Carlos Ungil
 ;; modified by Gwang-Jin Kim
 (defun get-unique-strings (xlsx-file)
@@ -214,7 +208,7 @@
         (loop for tag in tags
 	      collect (if (equal (xmls:node-attrs tag) '(("space" "preserve")))
 			  (xmls:xmlrep-string-child tag)
-			  " "))))) ;; corrected by Gwang-Jin Kim 18-09-07
+			  " "))))) ;; corrected by Gwang-Jin Kim 18-09-15
 
 ;; (defun get-unique-strings-windows (xlsx-file)
 ;;   (let ((tags (cl-xlsx:select-tags-xlsx xlsx-file "xl/sharedStrings.xml" '(:si :t))))
