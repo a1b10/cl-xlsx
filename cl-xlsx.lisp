@@ -285,9 +285,11 @@
 (defun read-xlsx (xlsx-file)
   (let* ((inner-files (list-entries xlsx-file))
 	 (sheet-addresses (filter-sheet-addresses inner-files))
-	 (unique-strings (get-unique-strings xlsx-file)))
-    (loop for sheet-address in sheet-addresses
-	  for sheet-rows = (select-tags-xlsx xlsx-file
-					     sheet-address
-					     '(:sheetData :row))
-	  collect (process-table-rows-xlsx sheet-rows unique-strings))))
+	 (unique-strings (get-unique-strings xlsx-file))
+	 (sheet-row-lists
+	   (loop for sheet-address in sheet-addresses
+		 for sheet-rows = (select-tags-xlsx xlsx-file
+						    sheet-address
+						    '(:sheetData :row))
+		 collect (process-table-rows-xlsx sheet-rows unique-strings))))
+    (nreverse sheet-row-lists)))
