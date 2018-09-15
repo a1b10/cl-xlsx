@@ -63,9 +63,15 @@
    Unzip xlsx file (excel-path) and parses xml file, then sequentially select tags,
    while flattening results inbetween. Thus, output is a plain list of the targeted
    tag objects (list structures defined by the :xmls package)."
-  (let ((content)) ;; initialize content symbol
-    (with-open-xlsx (content xml excel-path)
-	(collect-extract-exprs tags (list content)))))
+  (with-open-xlsx (content xml excel-path)
+    (collect-extract-exprs tags (list content))))
+
+;; From Gwang-Jin Kim
+(defun select-tags-xmlrep (xmlrep tags)
+  "Return xmlrep-tags matching the tags sequentially. Similar to `selet-tags-xlsx`,
+   but it does not start with a file and its inner xml file, but with an already
+   to an xmlrep parsed node-object (xmlrep)."
+  (collect-extract-exprs tags (list xmlrep)))
 
 (defun attr-val (attr tag)
   "Convenience function."
@@ -92,7 +98,7 @@
 				'(:si :t))))
     (loop for tag in tags
 	  collect (cond ((equal (xmls:node-attrs tag) '(("space" "preserve")))
-			 (xml:xmlrep-string-child tag))
+			 (xmls:xmlrep-string-child tag))
 			(t " "))))) ;; corrected by Gwang-Jin Kim 18-09-07
 
 ;; From Carlos Ungil
@@ -146,11 +152,11 @@
 ;; From Carlos Ungil
 ;; rewritten by Gwang-Jin Kim
 
-(defun list-sheeets (file)
+(defun list-sheets (file)
   "Retrieves the id and name of the worksheet in the .xlsx/.xlsm file."
   (let ((sheets (select-tags-xlsx file "xl/workbook.xml" '(:sheets :sheet))))
     (loop for sheet in sheets
-	  with rels (get-relationships file)
+	  with rels = (get-relationships file)
 	  for sheet-id   = (attr-val "sheetId" sheet)
 	  for sheet-name = (attr-val "name"    sheet)
 	  for sheet-rel  = (attr-val "id"      sheet)
@@ -181,11 +187,12 @@
 		   collect (list id name))))
     entry-name))
 
+;; From Gwang-Jin Kim
 (defun begins-with? (str substring)
   "String begins with substring?"
     (string= substring (subseq str 0 (length substring))))
 
-
+;; From Gwang-Jin Kim
 (defun app-type (file)
   "Return the type of an .xlsx or .ods file."
   (let ((entries (list-entries file)))
@@ -202,8 +209,40 @@
 			 "Microsoft Excel"))
 	   "xlsx-microsoft")))) ;; works!
 
-;; (app-type #P"/home/josephus/docs/test.ods") ;; => "ods"
-;; (app-type #P"/home/josephus/docs/test.xlsx") ;; => "xlsx-libreoffcie"
+;; (app-type #P"/home/josephus/docs/test.ods") ;; => "ods-libreoffice"
+;; (app-type #P"/home/josephus/docs/test.xlsx") ;; => "xlsx-libreoffice"
 ;; (app-type #p"/home/josephus/docs/test-windows.xlsx") ;; => "xlsx-windows" 
 
 ;; (member "docProps/app.xml" (list-entries #p"/home/josephus/docs/test-windows.xlsx") :test #'string=)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; read-in .ods file cell contents as strings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun process-table-cell (table-cell)
+  "Return table-cell content as string."
+  (third (third table-cell)))
+
+(defun process-table-row (table-row)
+  "Return list of text values in cells."
+  (let ((cell (xmls:xmlrep-find-child-tags "table-cell" table-row)))
+    (mapcar #'process-table-cell cell)))
+
+(defun process-table-rows-ods (table-rows)
+  "Return list of list of table-row contents as strings."
+  (mapcar #'process-table-row table-rows))
+
+
+(defun read-ods (ods-file)
+  "Read all sheets of an ods-file into a list of lists and strings.
+   The table contents are list of lists. (row-lists)
+   Each sheet is a list. And the entire result is a list of sheets."
+  (let ((inner-files (list-entries ods-file)))
+    (when (member "content.xml" inner-files :test #'string=)
+      (let* ((sheet-tags (select-tags-xlsx ods-file "content.xml" '(:body :spreadsheet)))
+	     (sheets-as-row-tags (mapcar #'(lambda (sheet-tag) (select-tags-xmlrep sheet-tag '(:table :table-row)))
+					 sheet-tags)))
+	(mapcar #'process-table-rows-ods sheets-as-row-tags)))))
+
