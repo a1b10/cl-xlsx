@@ -210,10 +210,10 @@
 	(tags (select-tags-xlsx xlsx-file
 				"xl/sharedStrings.xml"
 				'(:si :t))))
-    (loop for tag in tags
-	  collect (if is-windows
-		      (mapcar #'xmls:xmlrep-string-child tags)
-		      (if (equal (xmls:node-attrs tag) '(("space" "preserve")))
+    (if is-windows
+	(mapcar #'xmls:xmlrep-string-child tags)
+        (loop for tag in tags
+	      collect (if (equal (xmls:node-attrs tag) '(("space" "preserve")))
 			  (xmls:xmlrep-string-child tag)
 			  (t " ")))))) ;; corrected by Gwang-Jin Kim 18-09-07
 
