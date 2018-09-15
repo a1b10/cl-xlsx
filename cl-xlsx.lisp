@@ -239,8 +239,13 @@
    Each sheet is a list. And the entire result is a list of sheets."
   (let ((inner-files (list-entries ods-file)))
     (when (member "content.xml" inner-files :test #'string=)
-      (let* ((table-tags (select-tags-xlsx ods-file "content.xml" '(:body :spreadsheet :table)))
-	     (tables-as-row-tags (mapcar #'(lambda (sheet-tag) (select-tags-xmlrep sheet-tag '(:table-row)))
+      (let* ((table-tags (select-tags-xlsx ods-file
+					   "content.xml"
+					   '(:body :spreadsheet :table)))
+	     (tables-as-row-tags (mapcar #'(lambda (sheet-tag)
+					     (select-tags-xmlrep
+					      sheet-tag
+					      '(:table-row)))
 					 table-tags)))
 	(mapcar #'process-table-rows-ods tables-as-row-tags)))))
 
