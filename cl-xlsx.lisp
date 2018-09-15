@@ -239,10 +239,10 @@
   "Read all sheets of an ods-file into a list of lists and strings.
    The table contents are list of lists. (row-lists)
    Each sheet is a list. And the entire result is a list of sheets."
-  (let ((inner-files (list-entries ods-file)))
+  (let ((inner-files (cl-xlsx::list-entries ods-file)))
     (when (member "content.xml" inner-files :test #'string=)
-      (let* ((sheet-tags (select-tags-xlsx ods-file "content.xml" '(:body :spreadsheet)))
-	     (sheets-as-row-tags (mapcar #'(lambda (sheet-tag) (select-tags-xmlrep sheet-tag '(:table :table-row)))
-					 sheet-tags)))
-	(mapcar #'process-table-rows-ods sheets-as-row-tags)))))
+      (let* ((table-tags (cl-xlsx::select-tags-xlsx ods-file "content.xml" '(:body :spreadsheet :table)))
+	     (tables-as-row-tags (mapcar #'(lambda (sheet-tag) (select-tags-xmlrep sheet-tag '(:table-row)))
+					 table-tags)))
+	(mapcar #'process-table-rows-ods tables-as-row-tags)))))
 
