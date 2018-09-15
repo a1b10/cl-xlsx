@@ -1,7 +1,8 @@
 ;;;; package.lisp
+(in-package :cl-user)
 
 (defpackage #:cl-xlsx
-  (:use #:cl)
+  (:use #:cl #:zip #:xmls #:flexi-stream #:babel)
   (:export #:list-entries
 	   #:get-entry
 	   #:with-open-xlsx

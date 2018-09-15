@@ -1,12 +1,14 @@
 ;;;; cl-xlsx.asd
 
 (asdf:defsystem #:cl-xlsx
-  :name "xl"
-  :description "Basic reader for .xlsx and .ods files"
+  :name "cl-xlsx"
+  :version "0.0"
+  ;; :description "Basic reader for .xlsx and .ods files"
   :author "Gwang-Jin Kim <gwang.jin.kim.phd@gmail.com>"
   :license "MIT"
   :serial t
   :components ((:file "package")
                (:file "cl-xlsx"))
-  :depends-on (:zip :flexi-streams :xmls :babel))
+  :description "Read LibreOffice ODS files and LibreOffice and Microsoft XLSX files using Common Lisp"
+  :depends-on (:zip :xmls :babel))
 
