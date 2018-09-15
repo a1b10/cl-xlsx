@@ -206,11 +206,10 @@
 ;; modified by Gwang-Jin Kim
 (defun get-unique-strings (xlsx-file)
   "Return unique strings - necessary for parsing excel data."
-  (let ((is-windows (string= (app-type xlsx-file) "xlsx-microsoft"))
-	(tags (select-tags-xlsx xlsx-file
+  (let ((tags (select-tags-xlsx xlsx-file
 				"xl/sharedStrings.xml"
 				'(:si :t))))
-    (if is-windows
+    (if (string= (app-type xlsx-file) "xlsx-microsoft")
 	(mapcar #'xmls:xmlrep-string-child tags)
         (loop for tag in tags
 	      collect (if (equal (xmls:node-attrs tag) '(("space" "preserve")))
