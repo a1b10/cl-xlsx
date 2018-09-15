@@ -215,7 +215,7 @@
         (loop for tag in tags
 	      collect (if (equal (xmls:node-attrs tag) '(("space" "preserve")))
 			  (xmls:xmlrep-string-child tag)
-			  (t " ")))))) ;; corrected by Gwang-Jin Kim 18-09-07
+			  " "))))) ;; corrected by Gwang-Jin Kim 18-09-07
 
 ;; (defun get-unique-strings-windows (xlsx-file)
 ;;   (let ((tags (cl-xlsx:select-tags-xlsx xlsx-file "xl/sharedStrings.xml" '(:si :t))))
