@@ -245,3 +245,47 @@
 					 table-tags)))
 	(mapcar #'process-table-rows-ods tables-as-row-tags)))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; read-in .xlsx files as strings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun attr-val (tag attr)
+  (xmls:xmlrep-attrib-value attr tag))
+
+(defun extract-val-xlsx-cell (cell-tag)
+  (third (car (select-tags-xmlrep cell-tag '("v")))))
+
+(defun process-table-cell-xlsx (cell-tag unique-strings)
+  (let ((val (extract-val-xlsx-cell cell-tag)))
+    (if (equalp (attr-val cell-tag "t") "s")
+	(elt unique-strings (parse-integer val))
+	val))) ;; else string!
+
+(defun process-table-row-xlsx (row-tag unique-strings)
+  (let ((cells (select-tags-xmlrep row-tag '("c"))))
+    (mapcar #'(lambda (table-cell)
+		(process-table-cell-xlsx table-cell unique-strings))
+	    cells)))
+
+(defun process-table-rows-xlsx (table-rows unique-strings)
+  (mapcar #'(lambda (table-row)
+	      (process-table-row-xlsx table-row unique-strings))
+	  table-rows)) ;; works!!
+
+
+(defun filter-sheet-addresses (inner-files)
+  (let ((len-substr (length "xl/worksheets/")))
+    (remove-if-not #'(lambda (s) (and (>= (length s) len-substr)
+				      (begins-with? s "xl/worksheets/")))
+		   inner-files)))
+
+(defun read-xlsx (xlsx-file)
+  (let* ((inner-files (list-entries xlsx-file))
+	 (sheet-addresses (filter-sheet-addresses inner-files))
+	 (unique-strings (get-unique-strings xlsx-file)))
+    (loop for sheet-address in sheet-addresses
+	  for sheet-rows = (select-tags-xlsx xlsx-file
+					     sheet-address
+					     '(:sheetData :row))
+	  collect (process-table-rows-xlsx sheet-rows unique-strings))))
