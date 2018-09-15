@@ -88,18 +88,6 @@
 	  collect (cons (attr-val "Id" rel)
 			(attr-val "target" rel)))))
 
-;; from Carlos Ungil
-;; modified by Gwang-Jin Kim
-(defun get-unique-strings (xlsx-file)
-  "Return unique strings - necessary for parsing excel data."
-  (let ((tags (select-tags-xlsx xlsx-file
-				"xl/sharedStrings.xml"
-				'(:si :t))))
-    (loop for tag in tags
-	  collect (cond ((equal (xmls:node-attrs tag) '(("space" "preserve")))
-			 (xmls:xmlrep-string-child tag))
-			(t " "))))) ;; corrected by Gwang-Jin Kim 18-09-07
-
 ;; From Carlos Ungil
 ;; rewritten by Gwang-Jin Kim
 
@@ -214,6 +202,24 @@
 
 ;; (member "docProps/app.xml" (list-entries #p"/home/josephus/docs/test-windows.xlsx") :test #'string=)
 
+;; from Carlos Ungil
+;; modified by Gwang-Jin Kim
+(defun get-unique-strings (xlsx-file)
+  "Return unique strings - necessary for parsing excel data."
+  (let ((is-windows (string= (app-type xlsx-file) "xlsx-microsoft"))
+	(tags (select-tags-xlsx xlsx-file
+				"xl/sharedStrings.xml"
+				'(:si :t))))
+    (loop for tag in tags
+	  collect (if is-windows
+		      (mapcar #'xmls:xmlrep-string-child tags)
+		      (if (equal (xmls:node-attrs tag) '(("space" "preserve")))
+			  (xmls:xmlrep-string-child tag)
+			  (t " ")))))) ;; corrected by Gwang-Jin Kim 18-09-07
+
+;; (defun get-unique-strings-windows (xlsx-file)
+;;   (let ((tags (cl-xlsx:select-tags-xlsx xlsx-file "xl/sharedStrings.xml" '(:si :t))))
+;;     (mapcar #'(lambda (x) (third x)) tags))) ;; works!
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -256,9 +262,12 @@
 (defun extract-val-xlsx-cell (cell-tag)
   (third (car (select-tags-xmlrep cell-tag '("v")))))
 
+
 (defun process-table-cell-xlsx (cell-tag unique-strings)
-  (let ((val (extract-val-xlsx-cell cell-tag)))
-    (if (equalp (attr-val cell-tag "t") "s")
+  (let ((val (extract-val-xlsx-cell cell-tag))
+	(attribs (mapcar #'car (xmls:xmlrep-attribs cell-tag))))
+    (if (and (member "t" attribs :test #'string=)
+	     (equalp (attr-val cell-tag "t") "s"))
 	(elt unique-strings (parse-integer val))
 	val))) ;; else string!
 
