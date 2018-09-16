@@ -183,16 +183,32 @@
 (defun app-type (file)
   "Return the type of an .xlsx or .ods file."
   (let ((entries (list-entries file)))
-    (cond ((and (member "meta.xml" entries :test #'string=)
-		(begins-with? (caddar (select-tags-xlsx file "meta.xml" '(:meta :generator)))
+    (cond ((and (member "meta.xml"
+			entries
+			:test #'string=)
+		(begins-with? (caddar
+			       (select-tags-xlsx
+				file
+				"meta.xml"
+				'(:meta :generator)))
 			      "LibreOffice"))
 	   "ods-libreoffice")
-	  ((and (member "docProps/app.xml" entries :test #'string=)
-		(begins-with? (caddar (select-tags-xlsx file "docProps/app.xml" '(:Application)))
+	  ((and (member "docProps/app.xml"
+			entries
+			:test #'string=)
+		(begins-with? (caddar (select-tags-xlsx
+				       file
+				       "docProps/app.xml"
+				       '(:Application)))
 			      "LibreOffice"))
 	   "xlsx-libreoffice")
-	  ((and (member "docProps/app.xml" entries :test #'string=)
-		(string= (caddar (select-tags-xlsx file "docProps/app.xml" '(:Application)))
+	  ((and (member "docProps/app.xml"
+			entries
+			:test #'string=)
+		(string= (caddar (select-tags-xlsx
+				  file
+				  "docProps/app.xml"
+				  '(:Application)))
 			 "Microsoft Excel"))
 	   "xlsx-microsoft")))) ;; works!
 
