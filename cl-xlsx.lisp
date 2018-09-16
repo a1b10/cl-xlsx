@@ -157,17 +157,14 @@
 (defun sheet-address (file sheet)
   "Return inner xml address of an excel sheet."
   (let* ((sheets (list-sheets file))
-	 (entry-name (cond ((and (null sheet) (= 1 (length sheets)))
-			    (caddr (car sheets)))
-			   ((stringp sheet)
-			    (caddr (find sheet
-					 sheets
-					 :key #'cadr
-					 :test #'string=)))
-			   ((numberp sheet)
-			    (caddr (find sheet
-					 sheets
-					 :key #'car))))))
+	 (entry-name
+	   (cond ((and (null sheet) (= 1 (length sheets)))
+		  (third (car sheets)))
+		 ((stringp sheet)
+		  (third (find sheet sheets :key #'second
+					    :test #'string=)))
+		 ((numberp sheet)
+		  (third (find sheet sheets :key #'first))))))
     (unless entry-name
       (error "specify one of the following sheet ids or names: ~{~&~{~S~^~5T~}~}"
 	     (loop for (id name) in sheets
@@ -204,9 +201,7 @@
 ;; modified by Gwang-Jin Kim
 (defun get-unique-strings (xlsx-file)
   "Return unique strings - necessary for parsing excel data."
-  (let ((tags (select-tags-xlsx xlsx-file
-				"xl/sharedStrings.xml"
-				'(:si :t))))
+  (let ((tags (select-tags-xlsx xlsx-file "xl/sharedStrings.xml" '(:si :t))))
     (if (string= (app-type xlsx-file) "xlsx-microsoft")
 	(mapcar #'xmls:xmlrep-string-child tags)
         (loop for tag in tags
