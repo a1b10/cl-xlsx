@@ -19,9 +19,10 @@
 	   #:excel-date
 	   #:list-sheets
 	   #:sheet-address
-	   #:begins-with?
+	   #:begins-with-p
 	   #:app-type
 	   #:process-table-cell
 	   #:process-table-row
 	   #:process-table-rows-ods
-	   #:read-ods))
+	   #:read-ods
+	   #:read-xlsx))

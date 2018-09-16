@@ -58,21 +58,22 @@
 
 ;; From Gwang-Jin Kim
 (defun select-tags-xlsx (excel-path xml tags) ;; select-xlsx-tags
-  "Return tags matching the tags sequentially. 
-   Unzip xlsx file (excel-path) and parses xml file, then sequentially select tags,
-   while flattening results inbetween. Thus, output is a plain list of the targeted
+  "Return tags matching the tags in given hierarchic order.
+   Unzip xlsx file (excel-path) and parses xml file before.
+   Flattens the results inbetween, thus, output is a plain list of found
    tag objects (list structures defined by the :xmls package)."
   (with-open-xlsx (content xml excel-path)
     (collect-extract-exprs tags (list content))))
 
 ;; From Gwang-Jin Kim
 (defun select-tags-xmlrep (xmlrep tags)
-  "Return xmlrep-tags matching the tags sequentially. Similar to `selet-tags-xlsx`,
-   but it does not start with a file and its inner xml file, but with an already
-   to an xmlrep parsed node-object (xmlrep)."
+  "Return xmlrep-tags matching the tags sequentially. 
+   Similar to `selet-tags-xlsx`,
+   but it does not start with a file,
+   but a xmlrep parsed node-object (xmlrep)."
   (collect-extract-exprs tags (list xmlrep)))
 
-(defun attr-val (attr tag)
+(defun attr-val (tag attr)
   "Convenience function."
   (xmls:xmlrep-attrib-value attr tag))
 
@@ -85,8 +86,8 @@
 				     "xl/_rels/workbook.xml.rels"
 				     '(:relationship))))
     (loop for rel in relations
-	  collect (cons (attr-val "Id" rel)
-			(attr-val "target" rel)))))
+	  collect (cons (attr-val rel "Id")
+			(attr-val rel "target")))))
 
 ;; From Carlos Ungil
 ;; rewritten by Gwang-Jin Kim
@@ -97,14 +98,14 @@
 				   '(:numFmts :numFmt)))
 	 (format-codes (loop for fmt in formats
 			     collect (cons (parse-integer
-					    (attr-val "numFmtId" fmt))
-					   (attr-val "formatCode" fmt))))
+					    (attr-val fmt "numFmtId"))
+					   (attr-val fmt "formatCode"))))
 	 (styles (select-tags-xlsx xlsx-file
 				   "xl/styles.xml"
 				   '(:cellXfs :xf))))
     (loop for style in styles
 	  collect (let ((fmt-id (parse-integer
-				 (attr-val "numFmtId" style))))
+				 (attr-val style "numFmtId"))))
 		    (cons fmt-id
 			  (if (< fmt-id 164)
 			      :built-in
@@ -144,9 +145,9 @@
   (let ((sheets (select-tags-xlsx file "xl/workbook.xml" '(:sheets :sheet))))
     (loop for sheet in sheets
 	  with rels = (get-relationships file)
-	  for sheet-id   = (attr-val "sheetId" sheet)
-	  for sheet-name = (attr-val "name"    sheet)
-	  for sheet-rel  = (attr-val "id"      sheet)
+	  for sheet-id   = (attr-val sheet "sheetId")
+	  for sheet-name = (attr-val sheet "name"   )
+	  for sheet-rel  = (attr-val sheet "id"     )
 	  collect (list (parse-integer sheet-id)
 			sheet-name
 			(cdr (assoc sheet-rel rels :test #'string=))))))
@@ -174,7 +175,8 @@
 ;; From Gwang-Jin Kim
 (defun begins-with-p (str substring)
   "String begins with substring?"
-    (string= substring (subseq str 0 (length substring))))
+  (and (>= (length str) substring)
+       (string= substring (subseq str 0 (length substring)))))
 
 ;; From Gwang-Jin Kim
 (defun app-type (file)
@@ -253,12 +255,8 @@
 ;; read-in .xlsx files as strings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun attr-val (tag attr)
-  (xmls:xmlrep-attrib-value attr tag))
-
 (defun extract-val-xlsx-cell (cell-tag)
   (third (car (select-tags-xmlrep cell-tag '("v")))))
-
 
 (defun process-table-cell-xlsx (cell-tag unique-strings)
   (let ((val (extract-val-xlsx-cell cell-tag))
@@ -280,15 +278,13 @@
 	  table-rows)) ;; works!!
 
 
-(defun filter-sheet-addresses (inner-files)
-  (let ((len-substr (length "xl/worksheets/")))
-    (remove-if-not #'(lambda (s) (and (>= (length s) len-substr)
-				      (begins-with-p s "xl/worksheets/")))
-		   inner-files)))
+(defun select-sheet-addresses (inner-files)
+  (remove-if-not #'(lambda (s) (begins-with-p s "xl/worksheets/"))
+		 inner-files))
 
 (defun read-xlsx (xlsx-file)
   (let* ((inner-files (list-entries xlsx-file))
-	 (sheet-addresses (filter-sheet-addresses inner-files))
+	 (sheet-addresses (select-sheet-addresses inner-files))
 	 (unique-strings (get-unique-strings xlsx-file))
 	 (sheet-row-lists
 	   (loop for sheet-address in sheet-addresses
