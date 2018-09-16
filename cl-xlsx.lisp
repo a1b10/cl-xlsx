@@ -22,9 +22,12 @@
 
 ;; From Gwang-Jin Kim
 (defmacro with-open-xlsx ((content-var xml excel-file) &body body)
-  "Unzips & parses xml file and binds to variable given for `content-var`.
-   In the body part, access file content using this variable."
-  (destructuring-bind ((content-var xml excel-file))
+  "Unzips & parses xml file and binds the parsed result
+   to the variable/symbol given for `content-var`.
+   In the body part, thus the parsed file content can be referred to
+   using the specified symbol/variable."
+  (destructuring-bind
+      ((content-var xml excel-file))
       `((,content-var ,xml ,excel-file)) ;; (for a nicer looking macro call)
     (let ((zip (gensym)))
       `(zip:with-zipfile (,zip ,excel-file)
@@ -59,7 +62,7 @@
 ;; From Gwang-Jin Kim
 (defun select-tags-xlsx (excel-path xml tags) ;; select-xlsx-tags
   "Return tags matching the tags in given hierarchic order.
-   Unzip xlsx file (excel-path) and parses xml file before.
+   Unzips xlsx file (excel-path) and parses xml file before.
    Flattens the results inbetween, thus, output is a plain list of found
    tag objects (list structures defined by the :xmls package)."
   (with-open-xlsx (content xml excel-path)
@@ -93,8 +96,7 @@
 ;; rewritten by Gwang-Jin Kim
 
 (defun get-number-formats (xlsx-file)
-  (let* ((formats (select-tags-xlsx xlsx-file
-				   "xl/styles.xml"
+  (let* ((formats (select-tags-xlsx xlsx-file "xl/styles.xml"
 				   '(:numFmts :numFmt)))
 	 (format-codes (loop for fmt in formats
 			     collect (cons (parse-integer
@@ -197,7 +199,7 @@
 	     "xlsx-libreoffice")
 	    ((and (is-in-p "docProps/app.xml" entries)
 		  (string= (extract-app-name "xlsx") "Microsoft Excel"))
-	     "xlsx-microsoft"))))))) ;; works!
+	     "xlsx-microsoft"))))) ;; works!
 
 ;; from Carlos Ungil
 ;; modified by Gwang-Jin Kim
