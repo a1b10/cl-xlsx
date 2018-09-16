@@ -175,7 +175,7 @@
     entry-name))
 
 ;; From Gwang-Jin Kim
-(defun begins-with? (str substring)
+(defun begins-with-p (str substring)
   "String begins with substring?"
     (string= substring (subseq str 0 (length substring))))
 
@@ -185,22 +185,18 @@
   (let ((entries (list-entries file)))
     (flet ((extract-app-name (mode)
 	     (let* ((file-is-ods (string= mode "ods"))
-		    (xml  (if file-is-ods
-			      "meta.xml"
-			      "docProps/app.xml"))
-		    (tags (if file-is-ods
-			      '(:meta :generator)
-			      '(:Application))))
+		    (xml  (if file-is-ods "meta.xml" "docProps/app.xml"))
+		    (tags (if file-is-ods '(:meta :generator) '(:Application))))
 	         (caddar (select-tags-xlsx file xml tags))))
-	   (in-p (string string-list)
+	   (is-in-p (string string-list)
 	     (member string string-list :test #'string=)))
-      (cond ((and (in-p "meta.xml" entries)
-		  (begins-with? (extract-app-name "ods") "LibreOffice"))
+      (cond ((and (is-in-p "meta.xml" entries)
+		  (begins-with-p (extract-app-name "ods") "LibreOffice"))
 	     "ods-libreoffice")
-	    ((and (in-p "docProps/app.xml" entries)
-	          (begins-with? (extract-app-name "xlsx") "LibreOffice"))
+	    ((and (is-in-p "docProps/app.xml" entries)
+	          (begins-with-p (extract-app-name "xlsx") "LibreOffice"))
 	     "xlsx-libreoffice")
-	    ((and (in-p "docProps/app.xml" entries)
+	    ((and (is-in-p "docProps/app.xml" entries)
 		  (string= (extract-app-name "xlsx") "Microsoft Excel"))
 	     "xlsx-microsoft"))))))) ;; works!
 
@@ -292,7 +288,7 @@
 (defun filter-sheet-addresses (inner-files)
   (let ((len-substr (length "xl/worksheets/")))
     (remove-if-not #'(lambda (s) (and (>= (length s) len-substr)
-				      (begins-with? s "xl/worksheets/")))
+				      (begins-with-p s "xl/worksheets/")))
 		   inner-files)))
 
 (defun read-xlsx (xlsx-file)
