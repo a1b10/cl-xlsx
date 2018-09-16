@@ -177,7 +177,7 @@
 ;; From Gwang-Jin Kim
 (defun begins-with-p (str substring)
   "String begins with substring?"
-  (and (>= (length str) substring)
+  (and (>= (length str) (length substring))
        (string= substring (subseq str 0 (length substring)))))
 
 ;; From Gwang-Jin Kim
