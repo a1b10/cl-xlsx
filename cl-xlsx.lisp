@@ -183,34 +183,21 @@
 (defun app-type (file)
   "Return the type of an .xlsx or .ods file."
   (let ((entries (list-entries file)))
-    (cond ((and (member "meta.xml"
-			entries
-			:test #'string=)
-		(begins-with? (caddar
-			       (select-tags-xlsx
-				file
-				"meta.xml"
-				'(:meta :generator)))
-			      "LibreOffice"))
-	   "ods-libreoffice")
-	  ((and (member "docProps/app.xml"
-			entries
-			:test #'string=)
-		(begins-with? (caddar (select-tags-xlsx
-				       file
-				       "docProps/app.xml"
-				       '(:Application)))
-			      "LibreOffice"))
-	   "xlsx-libreoffice")
-	  ((and (member "docProps/app.xml"
-			entries
-			:test #'string=)
-		(string= (caddar (select-tags-xlsx
-				  file
-				  "docProps/app.xml"
-				  '(:Application)))
-			 "Microsoft Excel"))
-	   "xlsx-microsoft")))) ;; works!
+    (flet ((extract-app-name-string (xml tags)
+	     (caddar (select-tags-xlsx file xml tags))))
+      (cond ((and (member "meta.xml" entries :test #'string=)
+		  (begins-with?
+		   (extract-app-name-string "meta.xml"
+					    '(:meta :generator))
+		  "LibreOffice"))
+	     "ods-libreoffice")
+	    ((member "docProps/app.xml" entries :test #'string=)
+	   (let ((app-string (extract-app-name-string "docProps/app.xml"
+						      '(:Application))))
+	     (cond ((begins-with? app-string "LibreOffice")
+		    "xlsx-libreoffice")
+		   ((string= app-string "Microsoft Excel")
+		    "xlsx-microsoft")))))))) ;; works!
 
 ;; from Carlos Ungil
 ;; modified by Gwang-Jin Kim
