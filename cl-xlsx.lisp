@@ -90,7 +90,7 @@
 				     '(:relationship))))
     (loop for rel in relations
 	  collect (cons (attr-val rel "Id")
-			(attr-val rel "target")))))
+			(attr-val rel "Target")))))
 
 ;; From Carlos Ungil
 ;; rewritten by Gwang-Jin Kim
