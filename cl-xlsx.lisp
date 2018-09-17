@@ -84,7 +84,7 @@
 ;; modified by Gwang-Jin Kim
 
 (defun get-relationships (xlsx-file)
-  "Return relation ships of the excel file."
+  "Return relation ships of the excel file. Not for .ods!"
   (let ((relations (select-tags-xlsx xlsx-file
 				     "xl/_rels/workbook.xml.rels"
 				     '(:relationship))))
@@ -216,7 +216,6 @@
 ;; (defun get-unique-strings-windows (xlsx-file)
 ;;   (let ((tags (cl-xlsx:select-tags-xlsx xlsx-file "xl/sharedStrings.xml" '(:si :t))))
 ;;     (mapcar #'(lambda (x) (third x)) tags))) ;; works!
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; read-in .ods file cell contents as strings
