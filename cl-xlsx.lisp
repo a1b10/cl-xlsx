@@ -292,3 +292,22 @@
 						    '(:sheetData :row))
 		 collect (process-table-rows-xlsx sheet-rows unique-strings))))
     (nreverse sheet-row-lists)))
+
+
+;; the previous versions worked until very recently xmls changed to
+;; represent everything as struct.
+;; the functions which used list-extraction functions created problems
+;; mainly process-cell functions...
+
+;; thus, always, one should abstract such processes
+;; and use the abstracted versions (xmls:xmlrep- ...)
+;; in the old package xmls:xmlrep- functions worked on the list structures
+;; of tags.
+;; when extracting strings, I used car, caddar and such functions.
+
+;; still a problem is that xmlrep-find-child-tags -> collects into a list
+;; also my functions to select tags collect into a list.
+;; and there, I have to unpack when I want to apply
+;; xmls:xmlrep-string-child to extract the string ...
+
+;; anyhow, this story showed me, how important it is to use abstractions ...
