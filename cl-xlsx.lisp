@@ -10,7 +10,7 @@
     (let ((entries (zip:zipfile-entries zip)))
       (when entries
 	(loop for k being the hash-keys of entries
-	      collect k)))))
+	      collect k))))) ;; works
 
 ;; From Carlos Ungil
 (defun get-entry (name zip)
@@ -18,7 +18,7 @@
   (let ((entry (zip:get-zipfile-entry name zip)))
     (when entry
       (xmls:parse (babel:octets-to-string
-		   (zip:zipfile-entry-contents entry))))))
+		   (zip:zipfile-entry-contents entry)))))) ;; structs
 
 ;; From Gwang-Jin Kim
 (defmacro with-open-xlsx ((content-var xml excel-file) &body body)
@@ -32,13 +32,7 @@
     (let ((zip (gensym)))
       `(zip:with-zipfile (,zip ,excel-file)
 	 (let ((,content-var (get-entry ,xml ,zip)))
-	   ,@body)))))
-
-;; (defun select-child-tags (excel-file xml tag)
-;;   "Returns all chidren tags matching given tag in the xml file of the xlsx file."
-;;   (zip:with-zipfile (zip excel-file)
-;;     (let ((content (get-entry xml zip)))
-;;       (xmls:xmlrep-find-child-tags tag content)))) ; works
+	   ,@body))))) ;; structs
 
 (defun once-flatten (lst)
   "Return lst just once flattened."
@@ -50,7 +44,7 @@
   "Returns the tag-sign matching subtags in a flattened list."
   (once-flatten
    (mapcar #'(lambda (tag)
-	       (xmls:xmlrep-find-child-tags tag-sign tag))
+		(xmls:xmlrep-find-child-tags tag-sign tag))
 	   tags)))
 
 (defun collect-extract-exprs (tags acc)
@@ -188,7 +182,8 @@
 	     (let* ((file-is-ods (string= mode "ods"))
 		    (xml  (if file-is-ods "meta.xml" "docProps/app.xml"))
 		    (tags (if file-is-ods '(:meta :generator) '(:Application))))
-	         (caddar (select-tags-xlsx file xml tags))))
+	       (xmls:xmlrep-string-child
+		(select-tags-xlsx file xml tags))))
 	   (is-in-p (string string-list)
 	     (member string string-list :test #'string=)))
       (cond ((and (is-in-p "meta.xml" entries)
