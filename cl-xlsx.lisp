@@ -311,3 +311,6 @@
 ;; xmls:xmlrep-string-child to extract the string ...
 
 ;; anyhow, this story showed me, how important it is to use abstractions ...
+
+;; the best is to write an own xml parser (or copy the old one)
+;; and 'freeze' it.
