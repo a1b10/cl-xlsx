@@ -182,7 +182,7 @@
 	     (let* ((file-is-ods (string= mode "ods"))
 		    (xml  (if file-is-ods "meta.xml" "docProps/app.xml"))
 		    (tags (if file-is-ods '(:meta :generator) '(:Application))))
-	       (xmls:xmlrep-string-child
+	       (xmls:xmlrep-string-child ;; crucial for struct!
 		(car (select-tags-xlsx file xml tags)))))
 	   (is-in-p (string string-list)
 	     (member string string-list :test #'string=)))
@@ -195,6 +195,7 @@
 	    ((and (is-in-p "docProps/app.xml" entries)
 		  (string= (extract-app-name "xlsx") "Microsoft Excel"))
 	     "xlsx-microsoft"))))) ;; works!
+;; the `car` unpacks the list around the single tag
 
 ;; from Carlos Ungil
 ;; modified by Gwang-Jin Kim
