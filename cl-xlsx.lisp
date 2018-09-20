@@ -254,7 +254,7 @@
 
 (defun extract-val-xlsx-cell (cell-tag)
   (xmls:xmlrep-string-child
-   (xmls:find-child-tag :v cell-tag)))
+   (xmls:xmlrep-find-child-tag :v cell-tag)))
 
 (defun process-table-cell-xlsx (cell-tag unique-strings)
   (let ((val (extract-val-xlsx-cell cell-tag))
