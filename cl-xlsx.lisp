@@ -218,7 +218,8 @@
 
 (defun process-table-cell (table-cell)
   "Return table-cell content as string."
-  (third (third table-cell)))
+  (xmls:xmlrep-string-child
+   (xmls:xmlrep-find-child-tag :p table-cell)))
 
 (defun process-table-row (table-row)
   "Return list of text values in cells."
@@ -252,7 +253,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun extract-val-xlsx-cell (cell-tag)
-  (third (car (select-tags-xmlrep cell-tag '("v")))))
+  (xmls:xmlrep-string-child
+   (xmls:find-child-tag :v cell-tag)))
 
 (defun process-table-cell-xlsx (cell-tag unique-strings)
   (let ((val (extract-val-xlsx-cell cell-tag))
