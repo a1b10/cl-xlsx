@@ -183,7 +183,7 @@
 		    (xml  (if file-is-ods "meta.xml" "docProps/app.xml"))
 		    (tags (if file-is-ods '(:meta :generator) '(:Application))))
 	       (xmls:xmlrep-string-child
-		(select-tags-xlsx file xml tags))))
+		(select-tags-xlsx file xml (car tags)))))
 	   (is-in-p (string string-list)
 	     (member string string-list :test #'string=)))
       (cond ((and (is-in-p "meta.xml" entries)
