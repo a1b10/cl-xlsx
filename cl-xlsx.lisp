@@ -314,3 +314,226 @@
 
 ;; the best is to write an own xml parser (or copy the old one)
 ;; and 'freeze' it.
+
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(ql:quickload :cxml)
+(ql:quickload :zip)
+(ql:quickload :cl-xlsx)
+
+
+(defun source-entry (xml xlsx)
+  "Get content xml file inside xlsx."
+  (zip:with-zipfile (zip xlsx)
+    (let ((entry (zip:get-zipfile-entry xml zip)))
+      (when entry
+	(cxml:make-source (babel:octets-to-string (zip:zipfile-entry-contents entry)))))))
+
+;;; extractor functions for sax-parsed cell
+
+(defun sax-cell-value (sax)
+  "Return value of sax-parsed cell tag (in child tag :v)."
+  (car (last (car (last sax)))))
+
+(defun sax-cell-attrs (sax)
+  "Return attribute list of a sax-parsed cell tag."
+  (cadr sax))
+
+(defun sax-cell-type (sax)
+  "Return type of sax-parsed excel cell tag (attribute 't')."
+  (cadr (assoc "t" (sax-cell-attrs sax) :test #'equal)))
+
+(defun sax-cell-pos (sax)
+  "Return position information of sax-parsed excel cell tag (attribute 'r')."
+  (cadr (assoc "r" (sax-cell-attrs sax) :test #'equal)))
+
+(defun process-sax-cell (sax unique-strings)
+  "Return value of sax-parsed excel cell tag. Checks type 't'
+   and if string 's', looks up from unique-strings the right string.
+   If numeric 'n', then parses it using lisp-reader.
+   Otherwise return string." 
+  (let ((val-type (sax-cell-type sax)))
+    (cond ((equalp val-type "s") (elt unique-strings (parse-integer (sax-cell-value sax))))
+	  ((equalp val-type "n") (with-input-from-string (in (sax-cell-value sax))
+				   (read in)))
+	  (t (sax-cell-value sax)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; parse sheet
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the final correct version!
+(defun get-unique-strings (xlsx)
+  "Return all unique strings from xlsx file."
+  (klacks:with-open-source (src (source-entry "xl/sharedStrings.xml" xlsx))
+    (loop for key = (klacks:peek src)
+	  while key
+	  nconc (case key
+		  (:start-element
+		   (if (equal (klacks:current-qname src) "t")
+		       (list (let ((x (caddr (klacks:serialize-element src (cxml-xmls:make-xmls-builder)))))
+			       (if (null x)
+				   "" ;; if none available return empty string!
+				   x)))
+		       nil))
+		  (otherwise nil))
+       do (klacks:consume src))))
+
+(defun parse-xlsx-sheet (sheet-xml xlsx)
+  "Return parsed content for a given sheet-xml address in a xlsx-fpath."
+  (klacks:with-open-source (s (source-entry sheet-xml xlsx))
+    (let ((unique-strings (cl-xlsx:get-unique-strings xlsx)))
+      (loop for key = (klacks:peek s)
+	    while key
+	    nconcing (case key
+		       (:start-element
+			(let ((tag-name (klacks:current-qname s)))
+			  (cond ((equal tag-name "row")
+				 (loop for key = (klacks:peek s)
+				    for consumed = nil
+				    while key
+				    nconcing (case key
+					       (:start-element
+						(cond ((equal (klacks:current-qname s) "c")
+						       (setf consumed t)
+						       (list (process-sax-cell
+							      (klacks:serialize-element
+							       s
+							       (cxml-xmls:make-xmls-builder))
+							      unique-strings)))
+						      (t
+						       (setf consumed nil)
+						       nil)))
+					       (:end-element
+						(if (equal (klacks:current-qname s) "row")
+						    (return (list res)))))
+				    into res
+				    do (unless consumed
+					 (klacks:consume s))))
+				(t nil))))
+		       (otherwise nil))
+	 do (klacks:consume s))))) ;; works!
+
+
+;;;
+
+
+(defun starts-with-p (str substring)
+  "String starts/begins with substring?"
+  (let ((str-len (length str))
+	(sub-len (length substring)))
+    (and (>= str-len sub-len)
+	 (string= substring (subseq str 0 sub-len)))))
+
+(defun ends-with-p (str substring)
+  "String ends with substring?"
+  (let ((str-len (length str))
+	(sub-len (length substring)))
+    (and (>= str-len sub-len)
+	 (string= substring (subseq str (- str-len sub-len) str-len)))))
+				    
+(defun inner-files (xlsx)
+  "List all innter addresses in xlsx."
+  (zip:with-zipfile (inzip xlsx)
+    (let ((entries (zip:zipfile-entries inzip)))
+      (when entries
+	(loop for k being the hash-keys of entries
+	     collect k)))))
+
+#|
+(defun sheets (xlsx)
+  "Return sheet informations as list of lists (name sheet-number sheetaddress."
+  (let ((sheet-addresses (remove-if-not #'(lambda (x) (and (starts-with-p x "xl/worksheets/")
+							   (ends-with-p x ".xml")))
+					(inner-files xlsx))))
+    (klacks:with-open-source (src (source-entry "xl/workbook.xml" xlsx))
+      (loop for key = (klacks:peek src)
+	 while key
+	 nconc (case key
+		 (:start-element
+		  (if (equal (klacks:current-qname src) "sheet")
+		      (list (let* ((sax (klacks:serialize-element src (cxml-xmls:make-xmls-builder)))
+				   (attributes (cdadr sax)))
+			      (list (cadr (assoc "name" attributes :test #'equal))
+				    (parse-integer (cadr (assoc "sheetId" attributes :test #'equal)))
+				    (pop sheet-addresses))))
+		      nil))
+		 (otherwise nil))
+	 do (klacks:consume src))))) ;; works
+|#
+
+
+(defun sheets (xlsx)
+  "Return sheet informations as list of lists (name sheet-number sheetaddress)."
+  (klacks:with-open-source (src (source-entry "xl/workbook.xml" xlsx))
+    (loop for key = (klacks:peek src)
+       while key
+       nconc (case key
+	       (:start-element
+		(if (equal (klacks:current-qname src) "sheet")
+		    (list (let* ((sax (klacks:serialize-element src (cxml-xmls:make-xmls-builder)))
+				 (attributes (cdadr sax)))
+			    (list (cadr (assoc "name" attributes :test #'equal))
+				  (parse-integer (cadr (assoc "sheetId" attributes :test #'equal)))
+				  (concatenate 'string
+					       "xl/worksheets/sheet"
+					       (cadr (assoc "sheetId" attributes :test #'equal))
+					       ".xml"))))
+		    nil))
+	       (otherwise nil))
+       do (klacks:consume src))))
+
+
+(defun sheet-names (xlsx)
+  "List sheet names in xlsx file."
+  (mapcar #'car (sheets xlsx)))
+
+(defun sheet-address (sheet xlsx)
+  "Return sheet address inside xlsx file when sheet name or index given as input."
+  (typecase sheet
+    (string (caddr (assoc sheet (sheets xlsx) :test #'string=)))
+    (integer (cadr (assoc sheet (mapcar #'cdr (sheets xlsx)))))))
+
+
+(defun parse-xlsx (xlsx)
+  "Parse every sheet of xlsx and return as alist (sheet-name sheet-content-as-list)."
+  (let ((sheet-names (sheet-names xlsx)))
+    (mapcar #'(lambda (sheet)
+		(list sheet (parse-xlsx-sheet sheet xlsx)))
+	    sheet-names)))
+
+
+(defun app-name (xlsx)
+  "Return app-name of xlsx or ods/ots file."
+  (let ((inner-files (inner-files xlsx)))
+    (cond ((member "meta.xml" inner-files :test #'string=)
+	   (let ((src (source-entry "meta.xml" xlsx)))
+	     (klacks:find-element src "generator")
+	     (car (last (klacks:serialize-element src (cxml-xmls:make-xmls-builder))))))
+	  ((member "docProps/app.xml" inner-files :test #'string=)
+	   (let ((src (source-entry "docProps/app.xml" xlsx)))
+	     (klacks:find-element src "Application")
+	     (car (last (klacks:serialize-element src (cxml-xmls:make-xmls-builder))))))
+	  (t
+	   "")))) ; works!
+
+
+(defun app-type (xlsx)
+  "Return type of xlsx file - ods or odt included."
+  (let ((inner-files (inner-files xlsx)))
+    (cond ((starts-with-p (app-name xlsx) "LibreOffice")
+	   (if (member "meta.xml" inner-files :test #'string=)
+	       "ods-libreoffice"
+	       "xlsx-libreoffice"))
+	  ((starts-with-p (app-name xlsx) "Microsoft Excel")
+	   "xlsx-microsoft"))))
+
