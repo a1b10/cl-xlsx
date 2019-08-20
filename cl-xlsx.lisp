@@ -326,7 +326,7 @@
 
 (ql:quickload :cxml)
 (ql:quickload :zip)
-(ql:quickload :cl-xlsx)
+;; (ql:quickload :cl-xlsx)
 
 
 (defun source-entry (xml xlsx)
@@ -537,3 +537,86 @@
 	  ((starts-with-p (app-name xlsx) "Microsoft Excel")
 	   "xlsx-microsoft"))))
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; read ods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun parse-ods-cell (sax)
+  "Return string or number according to type of ods cell sax."
+  (let ((type (car (last (first (second sax)))))
+        (value (car (last (third sax)))))
+    (cond ((equalp type "float") (with-input-from-string (in value)
+				   (read in)))
+	  ((equalp type "string") value)
+	  (t value))))
+
+(defun list-structure (xml xlsx)
+  (klacks:with-open-source (s (source-entry xml xlsx))
+    (loop for key = (klacks:peek s)
+	  while key
+	  do (case key
+	       (:start-element (format t "~A {" (klacks:current-qname s)))
+	       (:end-element (format t "}")))
+	     (klacks:consume s))))
+
+(defun number-columns-repeated-cell-p (table-cell-sax)
+  (equal (car (caaadr table-cell-sax)) "number-columns-repeated"))
+
+(defun flatten (l &key (acc '()))
+  (cond ((null l) acc)
+	((atom (car l)) (flatten (cdr l) :acc (append acc (list (car l)))))
+	(t (flatten (cdr l) :acc (append acc (flatten (car l)))))))
+
+(defun all-nil-row-p (l)
+  (every #'null (flatten l)))
+
+
+(defun parse-ods (ods)
+  "Return parsed content for a given sheet-xml address in a xlsx-fpath."
+  (klacks:with-open-source (s (source-entry "content.xml" ods))
+    (loop for key = (klacks:peek s)
+	  while key
+	  nconcing (case key
+		     (:start-element
+		      (cond ((equal (klacks:current-qname s) "table:table")
+			     (loop for key1 = (klacks:peek s)
+				   for consumed = nil
+				   while key1
+				   nconcing (case key1
+					      (:start-element
+					       (cond ((equal (klacks:current-qname s) "table:table-row")
+						      (loop for key2 = (klacks:peek s)
+							    for consumed = nil
+							    while key2
+							    nconcing (case key2
+								       (:start-element
+									(cond ((equal (klacks:current-qname s) "table:table-cell")
+									       (setf consumed t)
+									       (let ((sax (klacks:serialize-element s (cxml-xmls:make-xmls-builder))))
+										 (if (number-columns-repeated-cell-p sax)
+										     nil
+									             (list (parse-ods-cell sax))))) ; this corrected the final NIL's in row
+									      (t
+									       (setf consumed nil)
+									       nil)))
+								       (:end-element
+									(if (equal (klacks:current-qname s) "table:table-row")
+									    (return (if (all-nil-row-p inner-res) ; this is a hack to get rid of tags at end of sheet
+											nil ; remove NIL-only row constructs
+											(list inner-res)))))
+								       (otherwise nil))
+							      into inner-res
+							    do (unless consumed
+								 (klacks:consume s))))
+						     (t nil)))
+					      (:end-element
+					       (if (equal (klacks:current-qname s) "table:table")
+						   (return (list res))))
+					      (otherwise nil))
+				     into res
+				   do (klacks:consume s)))
+			    (t nil)))
+		     (otherwise nil))
+	  do (klacks:consume s))))
