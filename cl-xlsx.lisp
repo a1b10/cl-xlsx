@@ -471,7 +471,6 @@
 	 do (klacks:consume src))))) ;; works
 |#
 
-
 (defun sheets (xlsx)
   "Return sheet informations as list of lists (name sheet-number sheetaddress)."
   (klacks:with-open-source (src (source-entry "xl/workbook.xml" xlsx))
@@ -492,7 +491,6 @@
 	       (otherwise nil))
        do (klacks:consume src))))
 
-
 (defun sheet-names (xlsx)
   "List sheet names in xlsx file."
   (mapcar #'car (sheets xlsx)))
@@ -503,14 +501,12 @@
     (string (caddr (assoc sheet (sheets xlsx) :test #'string=)))
     (integer (cadr (assoc sheet (mapcar #'cdr (sheets xlsx)))))))
 
-
 (defun parse-xlsx (xlsx)
   "Parse every sheet of xlsx and return as alist (sheet-name sheet-content-as-list)."
   (let ((sheet-names (sheet-names xlsx)))
     (mapcar #'(lambda (sheet)
 		(list sheet (parse-xlsx-sheet sheet xlsx)))
 	    sheet-names)))
-
 
 (defun app-name (xlsx)
   "Return app-name of xlsx or ods/ots file."
@@ -526,7 +522,6 @@
 	  (t
 	   "")))) ; works!
 
-
 (defun app-type (xlsx)
   "Return type of xlsx file - ods or odt included."
   (let ((inner-files (inner-files xlsx)))
@@ -536,8 +531,6 @@
 	       "xlsx-libreoffice"))
 	  ((starts-with-p (app-name xlsx) "Microsoft Excel")
 	   "xlsx-microsoft"))))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; read ods
@@ -572,7 +565,6 @@
 (defun all-nil-row-p (l)
   (every #'null (flatten l)))
 
-
 (defun parse-ods (ods)
   "Return parsed content for a given sheet-xml address in a xlsx-fpath."
   (klacks:with-open-source (s (source-entry "content.xml" ods))
@@ -582,7 +574,6 @@
 		     (:start-element
 		      (cond ((equal (klacks:current-qname s) "table:table")
 			     (loop for key1 = (klacks:peek s)
-				   for consumed = nil
 				   while key1
 				   nconcing (case key1
 					      (:start-element
@@ -620,3 +611,18 @@
 			    (t nil)))
 		     (otherwise nil))
 	  do (klacks:consume s))))
+
+;;; I want one `read-xlsx` function to handle both, ods and xlsx.
+;;; So it needs some introspection.
+;;; I should give an associative list back
+;;; where from each pair the first element is the sheet name
+;;; and the second element the parsed sheet.
+
+;;; Later:
+;;; It should have an optional :sheet argument by which one can restrict reading to a sheet or sheets.
+
+;;; There should be a sheet-names function which does the reading of sheet names.
+
+;;; I need a file-type function which returns "ods" or "xlsx". For introspection.
+
+;;;
