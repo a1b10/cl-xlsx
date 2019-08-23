@@ -626,3 +626,154 @@
 ;;; I need a file-type function which returns "ods" or "xlsx". For introspection.
 
 ;;;
+
+
+
+
+#|
+
+First part is parsing xlsx and ods files into lists at once.
+
+`list-entries` lists all filenames within xlsx or ods (which are zipped bundle of XML files).
+
+`get-entry` extracts sheets from zip
+-> it should be from xlsx/ods directly!
+
+`with-open-xlsx is wrapper um `zip:with-zipfile` where content-var is the get-entried content.
+however this abstraction is not very happy one.
+Rather one should have a sheet content extractor from xlsx direct.
+
+`once-flatten` is a typical utility function which flattens list just by one level.
+
+`extract-sub-tags returns tag-sign matching subtgs in a flattened list.
+`collect-extract-exprs` sequencially extract tags and flattens inbetween.
+it is a little like xpath.
+
+`select-tags-xlsx` extracts tag content directly from sheet-address and excelpath.
+There should be not sheet-address but sheet-name or sheet-number, because user-friendlier.
+
+`select-tags-xmlrep` not from xlsx directly, but a parsed xml file inside xlsx.
+xmlrep = SAX
+
+`attr-val` returns value of attribute in a tag.
+
+`get-reglationships` peeks in xlsx into "xl/_rels/workbook.xml.rels"
+and returns sheet id and address.
+
+the basic idea was that through xpath like order in the tags, the collection is more
+understandable and easier - but this is not the case.
+the klacks-syntax is easy - because to think of everything as stream and just to depict
+the last level sometimes helps ...
+
+`get-number-formats` tries to get correct number format in xlsx it seems.
+
+`column-and-row`
+
+`excel-date` tries to get excel dat correcty.
+
+`list-sheets` lists the sheet names in the xlsx file.
+
+`sheet-address` makes out of sheet-number or sheet-name (given for sheet)
+
+`begins-with-p`
+
+`app-type` determines the app type (xlsx or ods)
+
+`get-unique-strings` extracts all unique strings from xlsx-file.
+
+
+
+`process-table-cell` processes an ods table cell - just extracts value
+`process-table-row` extract 'table-cell's in a 'table-row' tag and applies `process-table-cell` on them.
+`process-table-row-ods` applies `process-table-row` on all rows of a table.
+
+`read-ods` lists first the innter-files using list-entries,
+tests whehter "content.xml" is amongst them (ods file!)
+extract tables, then table-rows for each table
+and then process-table-rows-ods on tables as row-tags.
+list of sheets
+
+
+`extract-val-xlsx-cell` 
+  extracts value from a xlsx cell
+`process-table-cell-xlsx`
+  takes `unique-strings` and a celltag and if it is a string, searches from unique-strings
+  the correct string, otherwise parses integer, otherwise the string as it is.
+`process-table-row-xlsx` 
+  retuires `unique-strings` obviously and applies `process-table-cell-xlsx` to each row in table.
+`select-sheet-addresses` of inner-files - selects only the sheet-addresses
+  (those beginning with "xl/worksheets/")
+
+`read-xlsx`
+  extracts all addresses
+  gets sheets addreses
+  extracts all unique strings
+  selects the sheet-row-lists
+    by extracting rows for each address and `process-table-rows-xlsx` on them
+      using unique-strings
+  and nreverses sheet-row-lists before returning
+
+;; maybe all these functions should be made dependent on :cxml and not :xlsx
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; cxml
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+`source-entry` gets content directly from xlsx file
+  (using `zip:get-zipfile-entry)
+  I can put core - getting from xlsx an xml - to: `get-content` (xml xlsx)
+
+`sax-cell-value` extracts value from sax-cell
+`sax-cell-attrs` extracts attributes from sax-cell
+`sax-cell-type` extracts type information from sax-cell
+`sax-cell-pos` extrcts position information from sax-cell (A1 B1 etc.)
+if using sax cell, this can be used from cxml as well as klacks
+so the above functions for :xlsx should be replaced by these
+
+`process-sax-cell` looksup whether string or not
+  if from strings then looksup right string from unique-strings
+  otherwise if number then uses :cl reader
+  otherwise just the value
+(this is like that above and can replace previous function).
+
+(just the parser should be from :cxml - and be the sax parser)
+
+
+;; `get-unique-strings` extracts unique strings but in cases that there is nothing
+;; it returns empty string
+
+`parse-xlsx-sheet` extracts and parses one xml in xlsx
+
+`starts-with-p` tests just whether a string begins with a string
+`ends-with-p` tests the ending
+
+`inner-files` lists the addresses inside an xlsx or ods
+
+`sheets` returns all sheet informations (sheet-name sheet-number sheet-address)
+`sheet-names` returns only the names
+`sheet-address` returns the address of sheet in xlsx, as long as sheet is either name or number
+
+`parse-xlsx` reads in every sheet
+;; there should be one inbetween step - parse-xlsx for only 1 sheet - but sheet given as name or number
+;; the address is sth intern
+
+`app-name` determines app name
+`app-type` returns ods-libreoffice or xlsx-libreoffice or xlsx-microsoft
+
+
+`parse-ods-cell` parses value of one ods-cell
+`list-structure` is just from the example - to see roughly the structure
+
+`number-columns-repeated-cell-p` is necessary to detect ods-cells without values
+`flatten` is similar to alexandria:flatten
+`all-nil-row-p` is a hack for removing only NIL element containing rows
+
+`parse-ods` reads in all ods sheets
+
+
+
+
+
+
+
+|#
