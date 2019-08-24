@@ -320,7 +320,7 @@
     (cond ((or (string= type "xlsx-microsoft")
 	       (string= type "xlsx-libreoffice"))
 	   (sheet-names-xlsx xlsx))
-	  ((string= type ods-libreoffice)
+	  ((string= type "ods-libreoffice")
 	   (sheet-names-ods xlsx))
 	  (t nil))))
 
