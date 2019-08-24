@@ -68,4 +68,5 @@ To not to have everytime to re-read (re-parse) the xlsx file, one should save th
 into a variable. And use this variable for extractions.
 
 Happy reading of Excel-files!
+And happy downstream processing of the read content! ;)
 
