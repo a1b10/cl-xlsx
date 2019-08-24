@@ -1,0 +1,2 @@
+(load "~/quicklisp/setup.lisp")	
+(ql:quickload :cl-xlsx)
