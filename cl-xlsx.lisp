@@ -7,7 +7,6 @@
 (in-package #:cl-xlsx)
 
 
-
 (defun starts-with-p (str substring)
   "String starts/begins with substring?"
   (let ((str-len (length str))
@@ -114,6 +113,23 @@
   (typecase sheet
     (string (caddr (assoc sheet (sheets xlsx) :test #'string=)))
     (integer (cadr (assoc sheet (mapcar #'cdr (sheets xlsx)))))))
+
+(defun get-unique-strings (xlsx)
+  "Return all unique strings from xlsx file."
+  (klacks:with-open-source (src (source-entry "xl/sharedStrings.xml" xlsx))
+    (loop for key = (klacks:peek src)
+	  while key
+	  nconc (case key
+		  (:start-element
+		   (if (equal (klacks:current-qname src) "t")
+		       (list (let ((x (caddr (klacks:serialize-element src (cxml-xmls:make-xmls-builder)))))
+			       (if (null x)
+				   "" ;; if none available return empty string!
+				   x)))
+		       nil))
+		  (otherwise nil))
+       do (klacks:consume src))))
+
 
 
 (defun parse-xlsx-sheet (sheet xlsx)
