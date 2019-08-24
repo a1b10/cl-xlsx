@@ -17,7 +17,13 @@ Beware reading is very slow for big files (>15 seconds for a 2~5 Mb file!) but t
 
 # Usage
 
-Install and define paths:
+Currently you have to git-clone it into your local quicklisp folder first.
+```
+cd ~/quicklisp/loacl-projects
+git clone https://a1b10/cl-xlsx.git
+```
+
+And then quickload and define paths:
 ```
 (ql:quickload :cl-xlsx)
 (defparameter *ods* #P"/path/to/your/file.ods")
