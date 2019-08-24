@@ -25,23 +25,27 @@ Install and define paths:
 ```
 
 Read the tables (:cl-xlsx can handle only simple sheets with simple tables in them! The package is yet in a very beginning stage.)
-Tables are returned in the form of plists: 
-```
-'((sheet1-name . sheet1-content) 
-     (sheet2-name . sheet2-content))
-```
-The sheet content is a simple list of list where every inner list is the content of a row in the table: 
-```'((row1-element-1 row1-element-2 ... row1-element-k) 
-     (row2-element-1 row2-element-2 ... row2-element-k) 
-     ... 
-     (rowN-element-1 rowN-element-2 ... rowN-element-k))
-```
+
 ```
 (defparameter *ods-sheet-contents* (cl-xlsx:read-xlsx *ods*))
 (defparameter *xlsx-sheet-contents* (cl-xlsx:read-xlsx *xlsx*))
 ```
 
-For inspection of the names of the sheets there is the `sheet-names` function.
+## Return Format
+
+- Tables are returned in the form of `plists`: 
+```
+'((sheet1-name . sheet1-content) 
+     (sheet2-name . sheet2-content))
+```
+- The sheet content is a simple list of list where every inner list is the content of a row in the table: 
+```'((row1-element-1 row1-element-2 ... row1-element-k) 
+     (row2-element-1 row2-element-2 ... row2-element-k) 
+     ... 
+     (rowN-element-1 rowN-element-2 ... rowN-element-k))
+```
+
+## Retrieve only sheet names
 
 ```
 ;; inspect sheet names
@@ -50,7 +54,10 @@ For inspection of the names of the sheets there is the `sheet-names` function.
 ```
 
 
-Select content of one sheet:
+## Select content of one sheet
+
+- by name:
+
 ```
 (defun select-sheet (sheet-name xlsx-content)
   (cdr (assoc sheet-name xlsx-content :test #'string=)))
@@ -58,8 +65,7 @@ Select content of one sheet:
 (defparameter *sheet-1-content* (select-sheet "Sheet1" *xlsx-content*))
 
 ```
-It is actually not necessary to now the sheet names for the extraction.
-You can use simply the sheet number beginning from 1:
+- by number (beginning from 1):
 ```
 (defparameter *sheet-1-content* (select-sheet 1 *xlsx-content*))
 (defparameter *sheet-2-content* (select-sheet 2 *xlsx-content*))
