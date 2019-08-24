@@ -52,7 +52,7 @@ Read the tables (:cl-xlsx can handle only simple sheets with simple tables in th
 ```
 - Only numbers are currently correctly parsed into numbers. All other cell values are returned as strings.
 
-We suggest you to write your own functions to distinguish different formats (e.g. dates) and to write your own transformation functions of e.g. the dates.
+We suggest you to write your own functions to distinguish different formats (e.g. dates) and to write your own transformation functions for them (e.g. function to recognize date-strings and converter functions to your date-representation of choice).
 
 ## Retrieve only sheet names
 
