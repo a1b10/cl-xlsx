@@ -12,6 +12,7 @@ Therefore the .xlsx or .ods files should be very simple (only one simple table (
 
 `:cxml` and there `klacks` for SAX-parsing using streams. 
 Beware reading is very slow for big files (>15 seconds for a 2~5 Mb file!) but this is the cost for memory efficient treatment of the files (as streams).
+
 `:zip` and `:bable` for handling binary streams.
 
 # Usage
@@ -68,5 +69,6 @@ To not to have everytime to re-read (re-parse) the xlsx file, one should save th
 into a variable. And use this variable for extractions.
 
 Happy reading of Excel-files!
+
 And happy downstream processing of the read content! ;)
 
