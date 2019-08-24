@@ -50,6 +50,31 @@
   (let ((attributes (sax-attributes sax)))
     (car (last (assoc attribute attributes :key #'car :test #'string=)))))
 
+;;; extractor functions for sax-parsed cell
+
+(defun sax-cell-value (sax)
+  "Return value of sax-parsed cell tag (in child tag :v)."
+  (car (last (car (last sax)))))
+
+(defun sax-cell-type (sax)
+  "Return type of sax-parsed excel cell tag (attribute 't')."
+  (cadr (assoc "t" (sax-attributes sax) :test #'equal)))
+
+(defun sax-cell-pos (sax)
+  "Return position information of sax-parsed excel cell tag (attribute 'r')."
+  (cadr (assoc "r" (sax-attributes sax) :test #'equal)))
+
+(defun process-sax-cell (sax unique-strings)
+  "Return value of sax-parsed excel cell tag. Checks type 't'
+   and if string 's', looks up from unique-strings the right string.
+   If numeric 'n', then parses it using lisp-reader.
+   Otherwise return string." 
+  (let ((val-type (sax-cell-type sax)))
+    (cond ((equalp val-type "s") (elt unique-strings (parse-integer (sax-cell-value sax))))
+	  ((equalp val-type "n") (with-input-from-string (in (sax-cell-value sax))
+				   (read in)))
+	  (t (sax-cell-value sax)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; read xlsx
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
