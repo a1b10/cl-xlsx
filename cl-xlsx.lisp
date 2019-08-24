@@ -1,3 +1,9 @@
+(defpackage :cl-xlsx
+  (:use :common-lisp :cxml :zip :babel)
+  (:export #:read-xlsx
+	   #:sheet-names))
+
+
 (in-package #:cl-xlsx)
 
 
@@ -99,7 +105,7 @@
 	 do (klacks:consume src))))) ;; works
 |#
 
-(defun sheet-names (xlsx)
+(defun sheet-names-xlsx (xlsx)
   "List sheet names in xlsx file."
   (mapcar #'car (sheets xlsx)))
 
@@ -147,9 +153,9 @@
 
 (defun parse-xlsx (xlsx)
   "Parse every sheet of xlsx and return as alist (sheet-name sheet-content-as-list)."
-  (let ((sheet-names (sheet-names xlsx)))
+  (let ((sheet-names (sheet-names-xlsx xlsx)))
     (mapcar #'(lambda (sheet)
-		(list sheet (parse-xlsx-sheet sheet xlsx)))
+		(cons sheet (parse-xlsx-sheet sheet xlsx)))
 	    sheet-names)))
 
 
@@ -267,6 +273,15 @@
 	  ((starts-with-p (app-name xlsx) "Microsoft Excel")
 	   "xlsx-microsoft"))))
 
+(defun sheet-names (xlsx)
+  "Return sheet-names of xlsx."
+  (let ((type (app-type xlsx)))
+    (cond ((or (string= type "xlsx-microsoft")
+	       (string= type "xlsx-libreoffice"))
+	   (sheet-names-xlsx xlsx))
+	  ((string= type ods-libreoffice)
+	   (sheet-names-ods xlsx))
+	  (t nil))))
 
 (defun read-xlsx (xlsx)
   "Read xlsx and ods file with all sheets into a list of list of lists - 
@@ -274,11 +289,29 @@
   (let ((type (app-type xlsx)))
     (cond ((or (string= type "xlsx-microsoft")
 	       (string= type "xlsx-libreoffice"))
-	   (loop for sheet-name in (sheet-names xlsx)
-	      for sheet-content in (parse-xlsx xlsx)
-		collect (cons sheet-name sheet-content)))
+	   (parse-xlsx xlsx))
 	  ((string= type "ods-libreoffice")
 	   (loop for sheet-name in (sheet-names-ods xlsx)
-	      for sheet-content in (parse-ods xlsx)
-		collect (cons sheet-name sheet-content)))
+		 for sheet-content in (parse-ods xlsx)
+		 collect (cons sheet-name sheet-content)))
 	  (t nil))))
+
+;; (defun read-xlsx (xlsx &key (sheet nil))
+;;   "Read xlsx and ods file with all sheets into a list of list of lists - 
+;;    recognizing automatically type of file (xlsx or ods/odt)."
+;;   (let ((type (app-type xlsx)))
+;;     (if (null sheet)
+;; 	(cond ((or (string= type "xlsx-microsoft")
+;; 		   (string= type "xlsx-libreoffice"))
+;; 	       (cond ((null sheet) (parse-xlsx xlsx))
+;; 		     ((atom sheet) (parse-xlsx-sheet xlsx))
+;; 		     ((consp sheet) (mapcar 
+;; 		   )
+;; 	      ((string= type "ods-libreoffice")
+;; 	       (loop for sheet-name in (sheet-names-ods xlsx)
+;; 		     for sheet-content in (parse-ods xlsx)
+;; 		collect (cons sheet-name sheet-content)))
+;; 	      (t nil))
+;; 	(cond (())))))
+
+
