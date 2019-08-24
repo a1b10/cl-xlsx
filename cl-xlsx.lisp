@@ -1,5 +1,5 @@
 (defpackage :cl-xlsx
-  (:use :common-lisp :cxml :zip :babel)
+  (:use :common-lisp)
   (:export #:read-xlsx
 	   #:sheet-names))
 
