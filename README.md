@@ -50,6 +50,8 @@ Read the tables (:cl-xlsx can handle only simple sheets with simple tables in th
      ... 
      (rowN-element-1 rowN-element-2 ... rowN-element-k))
 ```
+- Only numbers are currently correctly parsed into numbers. All other cell values are returned as strings.
+We suggest you to write your own functions to distinguish different formats (e.g. dates) and represent them correctly from the strings.
 
 ## Retrieve only sheet names
 
