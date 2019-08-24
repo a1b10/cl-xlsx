@@ -49,18 +49,17 @@ For inspection of the names of the sheets there is the `sheet-names` function.
 ```
 
 
-Select content of one sheet by using `assoc` (use correct `:test` function for comparison!`#'string=`).
+Select content of one sheet:
 ```
-(cdr (assoc <sheet-name> *xlsx-sheet-contents* :test #'string=))
-
-;; or write a function to extract the content
 (defun select-sheet (sheet-name xlsx-content)
   (cdr (assoc sheet-name xlsx-content :test #'string=)))
 
 (defparameter *sheet-1-content* (select-sheet "Sheet1" *xlsx-content*))
 
-;; It is actually not necessary to now the sheet names for the extraction.
-;; You can use simply the sheet number beginning from 1:
+```
+It is actually not necessary to now the sheet names for the extraction.
+You can use simply the sheet number beginning from 1:
+```
 (defparameter *sheet-1-content* (select-sheet 1 *xlsx-content*))
 (defparameter *sheet-2-content* (select-sheet 2 *xlsx-content*))
 ```
