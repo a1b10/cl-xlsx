@@ -39,7 +39,7 @@ Read the tables (:cl-xlsx can handle only simple sheets with simple tables in th
 
 ## Return Format
 
-- Tables are returned in the form of `plists`: 
+- Tables are returned in the form of `alist`s: 
 ```
 '((sheet1-name . sheet1-content) 
      (sheet2-name . sheet2-content))
