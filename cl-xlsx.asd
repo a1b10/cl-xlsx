@@ -11,4 +11,3 @@
                (:file "cl-xlsx"))
   :description "Read LibreOffice ODS files and LibreOffice and Microsoft XLSX files using Common Lisp"
   :depends-on (:cxml :zip :babel))
-

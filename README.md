@@ -13,7 +13,7 @@ compex sheet design, and no complex (fused) cells.
 Dependencies
 ------------
 
-[cxml](https://github.com/sharplispers/cxml) is used for SAX-parsing using
+[cxml](https://github.com/sharplispers/cxml) is used for SAX parsing using
 streams, while [zip](https://github.com/mcna/zip) and
 [babel](https://github.com/cl-babel/babel) are used for handling binary streams.
 
@@ -32,17 +32,17 @@ cd ~/common-lisp
 git clone https://github.com/a1b10/cl-xlsx
 ```
 
-Quickload it, then define paths:
+You may then be able to load it with Quickload:
 
 ```lisp
 (ql:quickload :cl-xlsx)
-(defparameter *ods* #P"/path/to/your/file.ods")
-(defparameter *xlsx* #P"/path/to/your/file.xlsx")
 ```
 
-To read the tables:
+To read the contents of .ods and .xls files:
 
 ```lisp
+(defparameter *ods* #P"/path/to/your/file.ods")
+(defparameter *xlsx* #P"/path/to/your/file.xlsx")
 (defparameter *ods-sheet-contents* (cl-xlsx:read-xlsx *ods*))
 (defparameter *xlsx-sheet-contents* (cl-xlsx:read-xlsx *xlsx*))
 ```
@@ -92,13 +92,13 @@ By name:
 (defun select-sheet (sheet-name xlsx-content)
   (cdr (assoc sheet-name xlsx-content :test #'string=)))
 
-(defparameter *sheet-1-content* (select-sheet "Sheet1" *xlsx-content*))
+(defparameter *sheet1-content* (select-sheet "Sheet1" *xlsx-content*))
 
 ```
 
 By number (beginning from 1):
 
 ```lisp
-(defparameter *sheet-1-content* (select-sheet 1 *xlsx-content*))
-(defparameter *sheet-2-content* (select-sheet 2 *xlsx-content*))
+(defparameter *sheet1-content* (select-sheet 1 *xlsx-content*))
+(defparameter *sheet2-content* (select-sheet 2 *xlsx-content*))
 ```
