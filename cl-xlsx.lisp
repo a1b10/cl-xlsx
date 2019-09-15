@@ -94,7 +94,7 @@
                   (:start-element
                    (if (equal (klacks:current-qname src) "sheet")
                        (list (let* ((sax (klacks:serialize-element src (cxml-xmls:make-xmls-builder)))
-                                    (attributes (cdadr sax)))
+                                    (attributes (cadr sax)))
                                (list (cadr (assoc "name" attributes :test #'equal))
                                      (parse-integer (cadr (assoc "sheetId" attributes :test #'equal)))
                                      (concatenate 'string
