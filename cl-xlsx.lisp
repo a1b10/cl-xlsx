@@ -89,21 +89,24 @@
   "Return sheet informations as list of lists (sheet-name sheet-number sheet-address)."
   (klacks:with-open-source (src (source-entry "xl/workbook.xml" xlsx))
     (loop :for key = (klacks:peek src)
+	  :for consumed = nil
           :while key
-          :nconc (case key
-                  (:start-element
-                   (if (equal (klacks:current-qname src) "sheet")
-                       (list (let* ((sax (klacks:serialize-element src (cxml-xmls:make-xmls-builder)))
-                                    (attributes (cadr sax)))
-                               (list (cadr (assoc "name" attributes :test #'equal))
-                                     (parse-integer (cadr (assoc "sheetId" attributes :test #'equal)))
-                                     (concatenate 'string
-                                                  "xl/worksheets/sheet"
-                                                  (cadr (assoc "sheetId" attributes :test #'equal))
-                                                  ".xml"))))
-                       nil))
-                  (otherwise nil))
-          :do (klacks:consume src))))
+          :nconcing (case key
+		      (:start-element
+		       (let ((tag-name (klacks:current-qname src)))
+			 (cond ((equal tag-name "sheet")
+				(setf consumed t)
+				(list (let* ((sax (klacks:serialize-element src (cxml-xmls:make-xmls-builder)))
+					     (attributes (cadr sax)))
+					(list (cadr (assoc "name" attributes :test #'equal))
+					      (parse-integer (cadr (assoc "sheetId" attributes :test #'equal)))
+					      (concatenate 'string "xl/worksheets/sheet"
+							   (cadr (assoc "sheetId" attributes :test #'equal))
+							   ".xml")))))
+			       (t nil))))
+		      (otherwise nil))
+	  :do (unless consumed
+		(klacks:consume src)))))
 
 ;; (defun sheets (xlsx)
 ;;   "Return sheet informations as list of lists (name sheet-number sheetaddress."
