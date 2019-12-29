@@ -36,6 +36,105 @@
 
 
 ;;;-----------------------------------------------------------------------------
+;;; date/time stuff
+;;;-----------------------------------------------------------------------------
+
+(defun excel-date-serial-number-to-timestamp (dsn)
+  (local-time:adjust-timestamp
+      (local-time:encode-timestamp 0 0 0 0 1 1 1900 :timezone local-time:+utc-zone+)
+    (offset :day (1- (if (< dsn 60)
+                         dsn
+                         (1- dsn))))))
+
+(defun decode-excel-date-serial-number (dsn)
+  (local-time:with-decoded-timestamp
+      (:year year :month month :day day :timezone local-time:+utc-zone+)
+      (excel-date-serial-number-to-timestamp dsn)
+    (values year month day)))
+
+(defun print-iso-date (lt-date &optional stream)
+  (local-time:format-timestring stream lt-date
+                                :format local-time:+iso-8601-date-format+))
+
+;;;-----------------------------------------------------------------------------
+;;; xpath stuff
+;;;-----------------------------------------------------------------------------
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *default-xlsx-namespaces*
+    '(("" "http://schemas.openxmlformats.org/spreadsheetml/2006/main"))))
+
+(defmacro with-xlsx-namespaces ((&optional extra-namespaces ) &body body)
+  `(xpath:with-namespaces ,(append *default-xlsx-namespaces* extra-namespaces)
+     ,@body))
+
+(defun guess-date-format-p (fmt-string)
+  (and (find #\D fmt-string :test 'char-equal)
+       (find #\M fmt-string :test 'char-equal)
+       (find #\Y fmt-string :test 'char-equal)))
+
+(defun find-user-defined-style (styles style-num)
+  (let ((user-defined-style (cdr (assoc (elt (first styles) style-num)
+                                        (second styles)))))
+    (when user-defined-style
+      (cond ((guess-date-format-p user-defined-style)
+             :date)
+            (t :general)))))
+
+(defun get-built-in-style-type (style-num)
+  (cond ((zerop style-num)
+         :general)
+        ((or (<= 1 style-num 4)
+             (<= 37 style-num 40)
+             (= style-num 48))
+         :numeric)
+        ((<= 9 style-num 10)
+         :percent)
+        ((<= 14 style-num 17)
+         :date)
+        ((or (<= 18 style-num 21)
+             (<= 45 style-num 47))
+         :time)
+        ((= 22 style-num)
+         :date-time)
+        (t :general)))
+
+(defun process-cell-node (node unique-strings styles)
+  "Return value of cell node. Checks type 't' and if string 's', looks
+   up from unique-strings the right string.  If numeric 'n', then
+   parses it using parse-number:parse-number, Otherwise return the
+   cell value directly."
+  (declare (optimize (debug 3)))
+  (with-xlsx-namespaces ()
+    (let ((element (fxml.stp:first-child node)))
+      (fxml.stp:with-attributes ((pos "r")
+                                 (cell-style "s")
+                                 (cell-type "t"))
+          element
+        (let ((value-node (xpath:first-node (xpath:evaluate "v/text()" element))))
+          (cond ((equalp cell-type "s")
+                 (elt unique-strings (parse-integer (xpath:string-value value-node))))
+                ((equalp cell-type "n")
+                 (let ((cell-value
+                        (parse-number:parse-number (xpath:string-value value-node))))
+                   (if cell-style
+                       (let ((cell-style-num (parse-integer cell-style)))
+                         (if cell-style-num
+                             (let ((cell-style
+                                    (or (find-user-defined-style styles cell-style-num)
+                                        (get-built-in-style-type cell-style-num))))
+                               (case cell-style
+                                 ((:date :date-time)
+                                  (excel-date-serial-number-to-timestamp
+                                   cell-value))
+                                 (t cell-value)))
+                             cell-value))
+                       cell-value)))
+                (t
+                 (when value-node
+                   (xpath:string-value value-node)))))))))
+
+;;;-----------------------------------------------------------------------------
 ;;; sax parsing
 ;;;-----------------------------------------------------------------------------
 
@@ -68,10 +167,8 @@
    Otherwise return string."
   (let ((val-type (sax-cell-type sax)))
     (cond ((equalp val-type "s") (elt unique-strings (parse-integer (sax-cell-value sax))))
-          ((equalp val-type "n") (with-input-from-string (in (sax-cell-value sax))
-                                   (read in)))
+          ((equalp val-type "n") (parse-number:parse-number (sax-cell-value sax)))
           (t (sax-cell-value sax)))))
-
 
 ;;;-----------------------------------------------------------------------------
 ;;; read xlsx
@@ -139,26 +236,61 @@
     (string (caddr (assoc sheet (sheets xlsx) :test #'string=)))
     (integer (cadr (assoc sheet (mapcar #'cdr (sheets xlsx)))))))
 
-(defun get-unique-strings (xlsx)
-  "Return all unique strings from xlsx file."
-  (klacks:with-open-source (src (source-entry "xl/sharedStrings.xml" xlsx))
-    (loop :for key = (klacks:peek src)
-          :while key
-          :nconc (case key
-                  (:start-element
-                   (if (equal (klacks:current-qname src) "t")
-                       (list (let ((x (caddr (klacks:serialize-element src (cxml-xmls:make-xmls-builder)))))
-                               (if (null x)
-                                   "" ;; if none available return empty string!
-                                   x)))
-                       nil))
-                  (otherwise nil))
-          :do (klacks:consume src))))
+(defun source-entry-stream (xml xlsx)
+  "Get content xml file inside xlsx."
+  (zip:with-zipfile (zip xlsx)
+    (let ((entry (zip:get-zipfile-entry xml zip)))
+      (when entry
+        (zip:zipfile-entry-contents entry)))))
 
-(defun parse-xlsx-sheet (sheet xlsx)
+(defun get-unique-strings (xlsx)
+  (let ((doc (fxml:parse (source-entry-stream "xl/sharedStrings.xml" xlsx)
+                         (fxml.stp:make-builder))))
+    (with-xlsx-namespaces ()
+      (xpath:map-node-set->list
+       (lambda (x)
+         (let ((rich-text-runs (xpath:evaluate "r/t/text()" x)))
+           (if (not (xpath:node-set-empty-p rich-text-runs))
+               (progn
+                 (apply #'concatenate
+                        'string
+                        (xpath:map-node-set->list #'xpath:string-value rich-text-runs)))
+               (let ((text (xpath:string-value (xpath:evaluate "t/text()" x))))
+                 (if text
+                     text
+                     )))))
+       (xpath:evaluate "/sst/si" doc)))))
+
+(defun get-doc-number-formats (doc)
+  (with-xlsx-namespaces ()
+    (xpath:map-node-set->list
+     (lambda (x)
+       (fxml.stp:with-attributes ((format-code "formatCode")
+                                  (number-format-id "numFmtId"))
+           x
+         (cons (parse-integer number-format-id) format-code)))
+     (xpath:evaluate "/styleSheet/numFmts/numFmt" doc))))
+
+(defun get-doc-cell-formats (doc)
+  (with-xlsx-namespaces ()
+    (xpath:map-node-set->list
+     (lambda (x)
+       (fxml.stp:with-attributes ((number-format-id "numFmtId"))
+           x
+         (parse-integer number-format-id)))
+     (xpath:evaluate "/styleSheet/cellXfs/xf" doc))))
+
+(defun get-styles (xlsx)
+  (let ((doc (fxml:parse (source-entry-stream "xl/styles.xml" xlsx)
+                         (fxml.stp:make-builder))))
+    (list (get-doc-cell-formats doc)
+          (get-doc-number-formats doc))))
+
+(defun parse-xlsx-sheet (sheet xlsx &key unique-strings styles)
   "Return parsed content for a given sheet in a xlsx-fpath."
   (klacks:with-open-source (s (source-entry (sheet-address sheet xlsx) xlsx))
-    (let ((unique-strings (cl-xlsx:get-unique-strings xlsx)))
+    (let ((unique-strings (or unique-strings
+                              (get-unique-strings xlsx))))
       (loop :for key = (klacks:peek s)
             :while key
             :nconcing (case key
@@ -172,11 +304,12 @@
                                                   (:start-element
                                                    (cond ((equal (klacks:current-qname s) "c")
                                                           (setf consumed t)
-                                                          (list (process-sax-cell
+                                                          (list (process-cell-node
                                                                  (klacks:serialize-element
                                                                   s
-                                                                  (cxml-xmls:make-xmls-builder))
-                                                                 unique-strings)))
+                                                                  (fxml.stp:make-builder))
+                                                                 unique-strings
+                                                                 styles)))
                                                          (t
                                                           (setf consumed nil)
                                                           nil)))
@@ -192,9 +325,13 @@
 
 (defun parse-xlsx (xlsx)
   "Parse every sheet of xlsx and return as alist (sheet-name sheet-content-as-list)."
-  (let ((sheet-names (sheet-names-xlsx xlsx)))
+  (let ((sheet-names (sheet-names-xlsx xlsx))
+        (unique-strings (get-unique-strings xlsx))
+        (styles (get-styles xlsx)))
     (mapcar #'(lambda (sheet)
-                (cons sheet (parse-xlsx-sheet sheet xlsx)))
+                (cons sheet (parse-xlsx-sheet sheet xlsx
+                                              :unique-strings unique-strings
+                                              :styles styles)))
             sheet-names)))
 
 
@@ -206,9 +343,11 @@
   "Return string or number according to type of ods cell sax."
   (let ((type (car (last (first (second sax)))))
         (value (car (last (third sax)))))
-    (cond ((equalp type "float") (with-input-from-string (in value)
-                                   (read in)))
-          ((equalp type "string") value)
+    (cond ((equalp type "float") (parse-number:parse-number value))
+          ;; since we return the same for "string" and the default
+          ;; case, no need to check "string" here.
+          ;;
+          ;; ((equalp type "string") value)
           (t value))))
 
 (defun sheet-names-ods (ods)
