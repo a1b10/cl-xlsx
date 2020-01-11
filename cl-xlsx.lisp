@@ -282,6 +282,15 @@
   "List sheet names in xlsx file."
   (mapcar #'car (sheets xlsx)))
 
+(defun sheet-address (sheet xlsx)
+  "Return sheet ID when sheet name or index given as input. Note that
+this is not the same as the user-visible sheet number and should not
+be used as an offset into the list of sheets. Use get-sheets to get
+more detailed information on sheets for that."
+  (typecase sheet
+    (string (caddr (assoc sheet (sheets xlsx) :test #'string=)))
+    (integer (cadr (assoc sheet (mapcar #'cdr (sheets xlsx)))))))
+
 (defun source-entry-stream (xml xlsx)
   "Get content xml file inside xlsx."
   (zip:with-zipfile (zip xlsx)
