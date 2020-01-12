@@ -60,11 +60,33 @@
 ;;; xpath stuff
 ;;;-----------------------------------------------------------------------------
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *default-xlsx-namespaces*
-    '(("" "http://schemas.openxmlformats.org/spreadsheetml/2006/main"))))
 
-(defmacro with-xlsx-namespaces ((&optional extra-namespaces ) &body body)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *package-relationships-namespace*
+    "http://schemas.openxmlformats.org/package/2006/relationships")
+
+  (defparameter *default-package-relationships-namespace*
+    `(("" ,*package-relationships-namespace*)))
+
+  (defparameter *relationships-namespace*
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships")
+
+  (defparameter *default-xlsx-namespaces*
+    `(("" "http://schemas.openxmlformats.org/spreadsheetml/2006/main")
+      ("mc" "http://schemas.openxmlformats.org/markup-compatibility/2006")
+      ("r" ,*office-document-relationships-namespace*)
+      ("x15" "http://schemas.microsoft.com/office/spreadsheetml/2010/11/main")
+      ("xr" "http://schemas.microsoft.com/office/spreadsheetml/2014/revision")
+      ("xr2" "http://schemas.microsoft.com/office/spreadsheetml/2015/revision2")
+      ("xr6" "http://schemas.microsoft.com/office/spreadsheetml/2016/revision6")
+      ("xr10" "http://schemas.microsoft.com/office/spreadsheetml/2016/revision10"))))
+
+(defmacro with-package-relationships-namespaces ((&optional extra-namespaces) &body body)
+  `(xpath:with-namespaces ,(append *default-package-relationships-namespace*
+                                   extra-namespaces)
+     ,@body))
+
+(defmacro with-xlsx-namespaces ((&optional extra-namespaces) &body body)
   `(xpath:with-namespaces ,(append *default-xlsx-namespaces* extra-namespaces)
      ,@body))
 
@@ -182,6 +204,36 @@
         (loop :for k :being :the :hash-keys :of entries
               :collect k)))))
 
+(defun get-relationships (xlsx)
+  "Returns sheet relationships as list of lists (...)."
+  (let ((rels (fxml:parse (source-entry-stream "xl/_rels/workbook.xml.rels" xlsx)
+                              (fxml.stp:make-builder))))
+    (with-package-relationships-namespaces ()
+      (xpath:map-node-set->list
+       (lambda (rel-node)
+         (fxml.stp:with-attributes ((id "Id")
+                                    (type "Type")
+                                    (target "Target"))
+             rel-node
+           (list id type target)))
+       (xpath:evaluate "/Relationships/Relationship" rels)))))
+
+(defun get-sheets (xlsx)
+  "Return sheet informations as list of lists (sheet-name sheet-number sheet-id sheet-address)."
+  (let ((relationships (get-relationships xlsx)))
+    (let ((workbook (fxml:parse (source-entry-stream "xl/workbook.xml" xlsx)
+                                (fxml.stp:make-builder))))
+      (with-xlsx-namespaces ()
+        (xpath:map-node-set->list
+         (lambda (sheet-node)
+           (fxml.stp:with-attributes ((r-id "r:id" *office-document-relationships-namespace*)
+                                      (sheet-id "sheetId")
+                                      (name "name"))
+               sheet-node
+             (let ((related-item (find r-id relationships :key #'car :test 'equal)))
+               (list name sheet-id r-id (elt related-item 2)))))
+         (xpath:evaluate "/workbook/sheets/sheet" workbook))))))
+
 (defun sheets (xlsx)
   "Return sheet informations as list of lists (sheet-name sheet-number sheet-address)."
   (klacks:with-open-source (src (source-entry "xl/workbook.xml" xlsx))
@@ -231,7 +283,10 @@
   (mapcar #'car (sheets xlsx)))
 
 (defun sheet-address (sheet xlsx)
-  "Return sheet address inside xlsx file when sheet name or index given as input."
+  "Return sheet ID when sheet name or index given as input. Note that
+this is not the same as the user-visible sheet number and should not
+be used as an offset into the list of sheets. Use get-sheets to get
+more detailed information on sheets for that."
   (typecase sheet
     (string (caddr (assoc sheet (sheets xlsx) :test #'string=)))
     (integer (cadr (assoc sheet (mapcar #'cdr (sheets xlsx)))))))
@@ -286,9 +341,9 @@
     (list (get-doc-cell-formats doc)
           (get-doc-number-formats doc))))
 
-(defun parse-xlsx-sheet (sheet xlsx &key unique-strings styles)
+(defun parse-xlsx-sheet (sheet-address xlsx &key unique-strings styles)
   "Return parsed content for a given sheet in a xlsx-fpath."
-  (klacks:with-open-source (s (source-entry (sheet-address sheet xlsx) xlsx))
+  (klacks:with-open-source (s (source-entry (concatenate 'string "xl/" sheet-address) xlsx))
     (let ((unique-strings (or unique-strings
                               (get-unique-strings xlsx))))
       (loop :for key = (klacks:peek s)
@@ -325,14 +380,17 @@
 
 (defun parse-xlsx (xlsx)
   "Parse every sheet of xlsx and return as alist (sheet-name sheet-content-as-list)."
-  (let ((sheet-names (sheet-names-xlsx xlsx))
+  (let ((sheets (get-sheets xlsx))
         (unique-strings (get-unique-strings xlsx))
         (styles (get-styles xlsx)))
     (mapcar #'(lambda (sheet)
-                (cons sheet (parse-xlsx-sheet sheet xlsx
-                                              :unique-strings unique-strings
-                                              :styles styles)))
-            sheet-names)))
+                (destructuring-bind (sheet-name sheet-number sheet-id sheet-address)
+                    sheet
+                  (declare (ignore sheet-number sheet-id))
+                  (cons sheet-name (parse-xlsx-sheet sheet-address xlsx
+                                                     :unique-strings unique-strings
+                                                     :styles styles))))
+            sheets)))
 
 
 ;;;-----------------------------------------------------------------------------
