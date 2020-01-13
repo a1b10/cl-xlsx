@@ -39,9 +39,9 @@
 ;;; date/time stuff
 ;;;-----------------------------------------------------------------------------
 
-(defun excel-date-serial-number-to-timestamp (dsn)
+(defun excel-date-serial-number-to-timestamp (dsn &optional (timezone local-time:*default-timezone*))
   (local-time:adjust-timestamp
-      (local-time:encode-timestamp 0 0 0 0 1 1 1900 :timezone local-time:+utc-zone+)
+      (local-time:encode-timestamp 0 1 0 0 1 1 1900 :timezone timezone)
     (offset :day (1- (if (< dsn 60)
                          dsn
                          (1- dsn))))))
@@ -52,9 +52,10 @@
       (excel-date-serial-number-to-timestamp dsn)
     (values year month day)))
 
-(defun print-iso-date (lt-date &optional stream)
+(defun print-iso-date (lt-date &optional stream (timezone local-time:*default-timezone*))
   (local-time:format-timestring stream lt-date
-                                :format local-time:+iso-8601-date-format+))
+                                :format local-time:+iso-8601-date-format+
+                                :timezone timezone))
 
 ;;;-----------------------------------------------------------------------------
 ;;; xpath stuff
