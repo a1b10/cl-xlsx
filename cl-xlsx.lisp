@@ -68,7 +68,7 @@
   (defparameter *default-package-relationships-namespace*
     `(("" ,*package-relationships-namespace*)))
 
-  (defparameter *relationships-namespace*
+  (defparameter *office-document-relationships-namespace*
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships")
 
   (defparameter *default-xlsx-namespaces*
