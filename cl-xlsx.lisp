@@ -122,7 +122,13 @@
          :date-time)
         (t :general)))
 
-(defun process-cell-node (node unique-strings styles)
+(defun excel-col-index (col)
+  (flet ((char-num (char)
+           (1+ (- (char-code (char-upcase char)) (char-code #\A)))))
+    (1- (reduce (lambda (x y)
+                  (+ (* x 26) (char-num y))) col :initial-value 0))))
+
+(defun process-cell-node (node unique-strings styles current-col)
   "Return value of cell node. Checks type 't' and if string 's', looks
    up from unique-strings the right string.  If numeric 'n', then
    parses it using parse-number:parse-number, Otherwise return the
@@ -134,28 +140,35 @@
                                  (cell-style "s")
                                  (cell-type "t"))
           element
-        (let ((value-node (xpath:first-node (xpath:evaluate "v/text()" element))))
-          (cond ((equalp cell-type "s")
-                 (elt unique-strings (parse-integer (xpath:string-value value-node))))
-                ((equalp cell-type "n")
-                 (let ((cell-value
-                        (parse-number:parse-number (xpath:string-value value-node))))
-                   (if cell-style
-                       (let ((cell-style-num (parse-integer cell-style)))
-                         (if cell-style-num
-                             (let ((cell-style
-                                    (or (find-user-defined-style styles cell-style-num)
-                                        (get-built-in-style-type cell-style-num))))
-                               (case cell-style
-                                 ((:date :date-time)
-                                  (excel-date-serial-number-to-timestamp
-                                   cell-value))
-                                 (t cell-value)))
-                             cell-value))
-                       cell-value)))
-                (t
-                 (when value-node
-                   (xpath:string-value value-node)))))))))
+        (let ((val (let ((value-node (xpath:first-node (xpath:evaluate "v/text()" element))))
+                     (cond ((equalp cell-type "s")
+                            (elt unique-strings (parse-integer (xpath:string-value value-node))))
+                           ((equalp cell-type "n")
+                            (let ((cell-value
+                                   (parse-number:parse-number (xpath:string-value value-node))))
+                              (if cell-style
+                                  (let ((cell-style-num (parse-integer cell-style)))
+                                    (if cell-style-num
+                                        (let ((cell-style
+                                               (or (find-user-defined-style styles cell-style-num)
+                                                   (get-built-in-style-type cell-style-num))))
+                                          (case cell-style
+                                            ((:date :date-time)
+                                             (excel-date-serial-number-to-timestamp
+                                              cell-value))
+                                            (t cell-value)))
+                                        cell-value))
+                                  cell-value)))
+                           (t
+                            (when value-node
+                              (xpath:string-value value-node)))))))
+          (let* ((pos-first-num (position-if #'digit-char-p pos))
+                 (col (subseq pos 0 pos-first-num))
+                 (col-index (excel-col-index col)))
+            (if (> col-index current-col)
+                (append (make-list (- col-index current-col))
+                        (list val))
+                (list val))))))))
 
 ;;;-----------------------------------------------------------------------------
 ;;; sax parsing
@@ -355,17 +368,22 @@ more detailed information on sheets for that."
                           (cond ((equal tag-name "row")
                                  (loop :for key = (klacks:peek s)
                                        :for consumed = nil
+                                       :with i = 0
                                        :while key
                                        :nconcing (case key
                                                   (:start-element
                                                    (cond ((equal (klacks:current-qname s) "c")
                                                           (setf consumed t)
-                                                          (list (process-cell-node
-                                                                 (klacks:serialize-element
-                                                                  s
-                                                                  (fxml.stp:make-builder))
-                                                                 unique-strings
-                                                                 styles)))
+                                                          (let ((cols
+                                                                 (process-cell-node
+                                                                  (klacks:serialize-element
+                                                                   s
+                                                                   (fxml.stp:make-builder))
+                                                                  unique-strings
+                                                                  styles
+                                                                  i)))
+                                                            (incf i (length cols))
+                                                            cols))
                                                          (t
                                                           (setf consumed nil)
                                                           nil)))
