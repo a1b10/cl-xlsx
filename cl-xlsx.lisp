@@ -523,7 +523,8 @@ more detailed information on sheets for that."
            (if (member "meta.xml" inner-files :test #'string=)
                "ods-libreoffice"
                "xlsx-libreoffice"))
-          ((starts-with-p (app-name xlsx) "Microsoft Excel")
+          ((or (starts-with-p (app-name xlsx) "Microsoft Excel")
+               (starts-with-p (app-name xlsx) "Microsoft Macintosh Excel"))
            "xlsx-microsoft"))))
 
 (defun sheet-names (xlsx)
