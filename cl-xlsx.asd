@@ -10,4 +10,4 @@
   :components ((:file "package")
                (:file "cl-xlsx"))
   :description "Read LibreOffice ODS files and LibreOffice and Microsoft XLSX files using Common Lisp"
-  :depends-on (:cxml :zip :babel :xpath :fxml :parse-number :local-time))
+  :depends-on (:cxml :zip :babel :xpath :fxml :fxml/stp :parse-number :local-time))
