@@ -355,49 +355,56 @@ more detailed information on sheets for that."
     (list (get-doc-cell-formats doc)
           (get-doc-number-formats doc))))
 
-(defun parse-xlsx-sheet (sheet-address xlsx &key unique-strings styles)
+(defun parse-xlsx-sheet (sheet-address xlsx &key unique-strings styles keep-empty-rows-as-nil)
   "Return parsed content for a given sheet in a xlsx-fpath."
   (klacks:with-open-source (s (source-entry (concatenate 'string "xl/" sheet-address) xlsx))
     (let ((unique-strings (or unique-strings
                               (get-unique-strings xlsx))))
       (loop :for key = (klacks:peek s)
-            :while key
-            :nconcing (case key
-                       (:start-element
-                        (let ((tag-name (klacks:current-qname s)))
-                          (cond ((equal tag-name "row")
+         :with row-counter = 1
+         :while key
+         :nconcing (case key
+                     (:start-element
+                      (let ((tag-name (klacks:current-qname s)))
+                        (cond ((equal tag-name "row")
+                               (let ((row-num (parse-number:parse-number (klacks:get-attribute s "r"))))
                                  (loop :for key = (klacks:peek s)
-                                       :for consumed = nil
-                                       :with i = 0
-                                       :while key
-                                       :nconcing (case key
-                                                  (:start-element
-                                                   (cond ((equal (klacks:current-qname s) "c")
-                                                          (setf consumed t)
-                                                          (let ((cols
+                                    :for consumed = nil
+                                    :with i = 0
+                                    :while key
+                                    :nconcing (case key
+                                                (:start-element
+                                                 (cond ((equal (klacks:current-qname s) "c")
+                                                        (setf consumed t)
+                                                        (let ((cols
+                                                               (progn
                                                                  (process-cell-node
                                                                   (klacks:serialize-element
                                                                    s
                                                                    (fxml.stp:make-builder))
                                                                   unique-strings
                                                                   styles
-                                                                  i)))
-                                                            (incf i (length cols))
-                                                            cols))
-                                                         (t
-                                                          (setf consumed nil)
-                                                          nil)))
-                                                  (:end-element
-                                                   (if (equal (klacks:current-qname s) "row")
-                                                       (return (list res)))))
-                                       :into res
-                                       :do (unless consumed
-                                            (klacks:consume s))))
-                                (t nil))))
-                       (otherwise nil))
-            :do (klacks:consume s))))) ;; works!
+                                                                  i))))
+                                                          (incf i (length cols))
+                                                          cols))
+                                                       (t
+                                                        (setf consumed nil)
+                                                        nil)))
+                                                (:end-element
+                                                 (when (equal (klacks:current-qname s) "row")
+                                                   (let ((pad-rows (- row-num row-counter)))
+                                                     (incf row-counter (1+ pad-rows))
+                                                     (return (append (when keep-empty-rows-as-nil
+                                                                       (make-list pad-rows))
+                                                                     (list res)))))))
+                                    :into res
+                                    :do (unless consumed
+                                          (klacks:consume s)))))
+                              (t nil))))
+                     (otherwise nil))
+         :do (klacks:consume s))))) ;; works!
 
-(defun parse-xlsx (xlsx)
+(defun parse-xlsx (xlsx &key keep-empty-rows-as-nil)
   "Parse every sheet of xlsx and return as alist (sheet-name sheet-content-as-list)."
   (let ((sheets (get-sheets xlsx))
         (unique-strings (get-unique-strings xlsx))
@@ -408,7 +415,8 @@ more detailed information on sheets for that."
                   (declare (ignore sheet-number sheet-id))
                   (cons sheet-name (parse-xlsx-sheet sheet-address xlsx
                                                      :unique-strings unique-strings
-                                                     :styles styles))))
+                                                     :styles styles
+                                                     :keep-empty-rows-as-nil keep-empty-rows-as-nil))))
             sheets)))
 
 
@@ -537,13 +545,13 @@ more detailed information on sheets for that."
            (sheet-names-ods xlsx))
           (t nil))))
 
-(defun read-xlsx (xlsx)
+(defun read-xlsx (xlsx &key keep-empty-rows-as-nil)
   "Read xlsx and ods file with all sheets into a list of list of lists -
    recognizing automatically type of file (xlsx or ods/odt)."
   (let ((type (app-type xlsx)))
     (cond ((or (string= type "xlsx-microsoft")
                (string= type "xlsx-libreoffice"))
-           (parse-xlsx xlsx))
+           (parse-xlsx xlsx :keep-empty-rows-as-nil keep-empty-rows-as-nil))
           ((string= type "ods-libreoffice")
            (loop :for sheet-name :in (sheet-names-ods xlsx)
                  :for sheet-content :in (parse-ods xlsx)
