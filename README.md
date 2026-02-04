@@ -9,6 +9,19 @@ into .csv before reading of data tables in .xlsx. Therefore the .xlsx or .ods
 files should be very simple—only one simple table (csv table) per sheet, and no
 compex sheet design, and no complex (fused) cells.
 
+---
+
+IMPORTANT!!
+-----------
+
+I created a new package
+- [cl-excel](https://github.com/gwangjinkim/cl-excel)
+which is cl-xlsx's successor and which allows you to read AND write 
+your tables from/into Excel sheets. So please use that package instead.
+I am happy if you star the new [repo](https://github.com/gwangjinkim/cl-excel) 
+for support!
+
+---
 
 Dependencies
 ------------
