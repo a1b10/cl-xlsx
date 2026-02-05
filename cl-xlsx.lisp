@@ -532,7 +532,9 @@ more detailed information on sheets for that."
                "ods-libreoffice"
                "xlsx-libreoffice"))
           ((or (starts-with-p (app-name xlsx) "Microsoft Excel")
-               (starts-with-p (app-name xlsx) "Microsoft Macintosh Excel"))
+               (starts-with-p (app-name xlsx) "Microsoft Macintosh Excel")
+			   (starts-with-p (app-name xlsx) "WPS 表格")
+			   (starts-with-p (app-name xlsx) "Apache POI"))
            "xlsx-microsoft"))))
 
 (defun sheet-names (xlsx)
